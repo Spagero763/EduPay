@@ -13,7 +13,6 @@ html {
 body {
   background: #F2ECE2;
   color: #0D0B08;
-  font-family: var(--font-inter), sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }

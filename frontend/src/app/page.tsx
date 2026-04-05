@@ -19,6 +19,7 @@ function FadeUp({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: "-50px" })
   return (
+    <meta name="talentapp:project_verification" content="a39cb1ae17e967a401b06baf0f6d31acb2326952abe3fcbef47a30d01afb22fe2c4f0edaacb57e3e9a2a843c860d49bfc2563ff8fc4f875dc1993192f261097f">
     <motion.div
       ref={ref}
       initial={{ opacity: 0, y: 28 }}

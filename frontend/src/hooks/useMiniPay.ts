@@ -1,71 +1,54 @@
 import { useState, useEffect } from "react"
 import { ethers } from "ethers"
 import { EDUPAY_ADDRESS, CUSD_ADDRESS, EDUPAY_ABI, CUSD_ABI } from "@/lib/contract"
+import { useAppKit, useAppKitAccount, useAppKitProvider } from "@reown/appkit/react"
+import type { Eip1193Provider } from "ethers"
 
 const PUBLIC_RPC = "https://forno.celo.org"
 
 export function useMiniPay() {
+  const { open } = useAppKit()
+  const { address, isConnected } = useAppKitAccount()
+  const { walletProvider } = useAppKitProvider("eip155")
+
   const [isMiniPay, setIsMiniPay] = useState(false)
-  const [address, setAddress] = useState<string | null>(null)
   const [provider, setProvider] = useState<ethers.providers.JsonRpcProvider | ethers.providers.Web3Provider | null>(null)
   const [signer, setSigner] = useState<ethers.Signer | null>(null)
   const [cusdBalance, setCusdBalance] = useState<string>("0")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function init() {
+    const publicProvider = new ethers.providers.JsonRpcProvider(PUBLIC_RPC)
+    setProvider(publicProvider)
+    setLoading(false)
+
+    const eth = (window as any).ethereum
+    if (eth?.isMiniPay) setIsMiniPay(true)
+  }, [])
+
+  useEffect(() => {
+    if (!walletProvider || !address) return
+    async function setup() {
       try {
-        const eth = (window as any).ethereum
-
-        // Always set up a public provider for reading — no wallet needed
-        const publicProvider = new ethers.providers.JsonRpcProvider(PUBLIC_RPC)
-        setProvider(publicProvider)
-
-        if (!eth) { setLoading(false); return }
-
-        setIsMiniPay(eth.isMiniPay === true)
-
-        // Silent check — do NOT request accounts automatically
-        const accounts: string[] = await eth.request({ method: "eth_accounts" })
-        if (!accounts.length) { setLoading(false); return }
-
-        const web3Provider = new ethers.providers.Web3Provider(eth)
+        const web3Provider = new ethers.providers.Web3Provider(
+          walletProvider as Eip1193Provider
+        )
         const _signer = web3Provider.getSigner()
         setSigner(_signer)
         setProvider(web3Provider)
 
-        const _address = await _signer.getAddress()
-        setAddress(_address)
-
         const cusd = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, web3Provider)
-        const bal = await cusd.balanceOf(_address)
+        const bal = await cusd.balanceOf(address)
         setCusdBalance(ethers.utils.formatEther(bal))
       } catch (err) {
-        console.error("useMiniPay init error:", err)
-      } finally {
-        setLoading(false)
+        console.error("wallet setup error:", err)
       }
     }
-    init()
-  }, [])
+    setup()
+  }, [walletProvider, address])
 
-  async function connect() {
-    try {
-      const eth = (window as any).ethereum
-      if (!eth) return
-      const web3Provider = new ethers.providers.Web3Provider(eth)
-      await web3Provider.send("eth_requestAccounts", [])
-      const _signer = web3Provider.getSigner()
-      setSigner(_signer)
-      setProvider(web3Provider)
-      const _address = await _signer.getAddress()
-      setAddress(_address)
-      const cusd = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, web3Provider)
-      const bal = await cusd.balanceOf(_address)
-      setCusdBalance(ethers.utils.formatEther(bal))
-    } catch (err) {
-      console.error("connect error:", err)
-    }
+  function connect() {
+    open()
   }
 
   function getEduPay(withSigner = false) {
@@ -121,17 +104,31 @@ export function useMiniPay() {
     throw new Error("CourseCreated event not found")
   }
 
-  async function addChapter(courseId: number, title: string, contentHash: string, price: ethers.BigNumber) {
+  async function addChapter(
+    courseId: number,
+    title: string,
+    contentHash: string,
+    price: ethers.BigNumber
+  ) {
     const eduPay = getEduPay(true)
     const tx = await eduPay.addChapter(courseId, title, contentHash, price)
     return tx.wait()
   }
 
   return {
-    isMiniPay, address, provider, signer,
-    cusdBalance, loading, connect,
-    getEduPay, getCusd,
-    purchaseChapter, purchaseFullCourse,
-    createCourse, addChapter,
+    isMiniPay,
+    address: address ?? null,
+    isConnected,
+    provider,
+    signer,
+    cusdBalance,
+    loading,
+    connect,
+    getEduPay,
+    getCusd,
+    purchaseChapter,
+    purchaseFullCourse,
+    createCourse,
+    addChapter,
   }
 }

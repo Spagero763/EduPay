@@ -5,10 +5,16 @@ interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
     function transfer(address to, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
+    function decimals() external view returns (uint8);
 }
 
 contract EduPay {
-    IERC20 public immutable cUSD;
+    // ── Accepted payment tokens ───────────────────────
+    // cUSD  (Mento)  — 18 decimals
+    address public constant CUSD = 0x765DE816845861e75A25fCA122bb6898B8B1282a;
+    // USDC  (Circle) — 6 decimals
+    address public constant USDC = 0xcebA9300f2b948710d2653dD7B07f33A8B32118C;
+
     address public owner;
     uint256 public platformFeePercent;
     uint256 public courseCount;
@@ -16,7 +22,7 @@ contract EduPay {
     struct Chapter {
         string title;
         string contentHash;
-        uint256 price;
+        uint256 priceUSD; // stored in 6 decimals (USDC base)
         bool exists;
     }
 
@@ -26,7 +32,7 @@ contract EduPay {
         string description;
         bool isActive;
         uint256 chapterCount;
-        uint256 totalEarned;
+        uint256 totalEarned; // in 6 decimals
     }
 
     mapping(uint256 => Course) public courses;
@@ -35,14 +41,17 @@ contract EduPay {
     mapping(address => uint256[]) public tutorCourses;
     mapping(address => uint256) public tutorEarnings;
 
+    // track fees per token
+    mapping(address => uint256) public accruedTokenFees;
+
     event CourseCreated(uint256 indexed courseId, address indexed tutor, string title);
     event ChapterAdded(uint256 indexed courseId, uint256 indexed chapterId, string title, uint256 price);
     event ChapterPurchased(
-        uint256 indexed courseId, uint256 indexed chapterId, address indexed student, uint256 amountPaid
+        uint256 indexed courseId, uint256 indexed chapterId, address indexed student, address token, uint256 amountPaid
     );
-    event FullCoursePurchased(uint256 indexed courseId, address indexed student, uint256 totalPaid);
+    event FullCoursePurchased(uint256 indexed courseId, address indexed student, address token, uint256 totalPaid);
     event CourseToggled(uint256 indexed courseId, bool isActive);
-    event FeesWithdrawn(address indexed to, uint256 amount);
+    event FeesWithdrawn(address token, address indexed to, uint256 amount);
     event PlatformFeeUpdated(uint256 newFee);
 
     modifier onlyOwner() {
@@ -60,14 +69,31 @@ contract EduPay {
         _;
     }
 
-    constructor(address _cUSD) {
-        require(_cUSD != address(0), "EduPay: invalid cUSD");
-        cUSD = IERC20(_cUSD);
+    modifier validToken(address _token) {
+        require(_token == CUSD || _token == USDC, "EduPay: unsupported token");
+        _;
+    }
+
+    constructor() {
         owner = msg.sender;
         platformFeePercent = 5;
     }
 
-    // ── Tutor ─────────────────────────────────────────────────
+    // ── Internal helpers ──────────────────────────────
+
+    /**
+     * @dev Convert a price stored in 6-decimal base to the
+     *      correct amount for the chosen token.
+     *      cUSD has 18 decimals, USDC has 6 decimals.
+     */
+    function _toTokenAmount(uint256 _price6, address _token) internal pure returns (uint256) {
+        if (_token == CUSD) {
+            return _price6 * 1e12; // scale 6 → 18 decimals
+        }
+        return _price6; // USDC stays at 6 decimals
+    }
+
+    // ── Tutor functions ───────────────────────────────
 
     function createCourse(string memory _title, string memory _description) external returns (uint256 courseId) {
         require(bytes(_title).length > 0, "EduPay: empty title");
@@ -79,6 +105,11 @@ contract EduPay {
         emit CourseCreated(courseId, msg.sender, _title);
     }
 
+    /**
+     * @param _price  Price in USDC units (6 decimals).
+     *                e.g. 1 USD = 1_000_000
+     *                     0.50 USD = 500_000
+     */
     function addChapter(uint256 _courseId, string memory _title, string memory _contentHash, uint256 _price)
         external
         courseExists(_courseId)
@@ -92,7 +123,7 @@ contract EduPay {
 
         chapterId = courses[_courseId].chapterCount++;
         chapters[_courseId][chapterId] =
-            Chapter({title: _title, contentHash: _contentHash, price: _price, exists: true});
+            Chapter({title: _title, contentHash: _contentHash, priceUSD: _price, exists: true});
         emit ChapterAdded(_courseId, chapterId, _title, _price);
     }
 
@@ -106,7 +137,7 @@ contract EduPay {
         if (bytes(_newContentHash).length > 0) {
             chapters[_courseId][_chapterId].contentHash = _newContentHash;
         }
-        chapters[_courseId][_chapterId].price = _newPrice;
+        chapters[_courseId][_chapterId].priceUSD = _newPrice;
     }
 
     function toggleCourse(uint256 _courseId) external courseExists(_courseId) onlyTutor(_courseId) {
@@ -114,9 +145,16 @@ contract EduPay {
         emit CourseToggled(_courseId, courses[_courseId].isActive);
     }
 
-    // ── Student ───────────────────────────────────────────────
+    // ── Student functions ─────────────────────────────
 
-    function purchaseChapter(uint256 _courseId, uint256 _chapterId) external courseExists(_courseId) {
+    /**
+     * @param _token  CUSD or USDC address
+     */
+    function purchaseChapter(uint256 _courseId, uint256 _chapterId, address _token)
+        external
+        courseExists(_courseId)
+        validToken(_token)
+    {
         Course storage course = courses[_courseId];
         Chapter storage chapter = chapters[_courseId][_chapterId];
 
@@ -124,50 +162,56 @@ contract EduPay {
         require(chapter.exists, "EduPay: chapter not found");
         require(!hasAccess[_courseId][msg.sender][_chapterId], "EduPay: already purchased");
 
-        uint256 price = chapter.price;
-        uint256 fee = (price * platformFeePercent) / 100;
-        uint256 tutorShare = price - fee;
+        uint256 amount = _toTokenAmount(chapter.priceUSD, _token);
+        uint256 fee = (amount * platformFeePercent) / 100;
+        uint256 tutorShare = amount - fee;
 
-        require(cUSD.transferFrom(msg.sender, address(this), price), "EduPay: transfer failed");
-        require(cUSD.transfer(course.tutor, tutorShare), "EduPay: tutor pay failed");
+        IERC20 token = IERC20(_token);
+        require(token.transferFrom(msg.sender, address(this), amount), "EduPay: transfer failed");
+        require(token.transfer(course.tutor, tutorShare), "EduPay: tutor pay failed");
 
+        accruedTokenFees[_token] += fee;
         hasAccess[_courseId][msg.sender][_chapterId] = true;
-        course.totalEarned += tutorShare;
-        tutorEarnings[course.tutor] += tutorShare;
+        course.totalEarned += chapter.priceUSD;
+        tutorEarnings[course.tutor] += chapter.priceUSD;
 
-        emit ChapterPurchased(_courseId, _chapterId, msg.sender, price);
+        emit ChapterPurchased(_courseId, _chapterId, msg.sender, _token, amount);
     }
 
-    function purchaseFullCourse(uint256 _courseId) external courseExists(_courseId) {
+    function purchaseFullCourse(uint256 _courseId, address _token) external courseExists(_courseId) validToken(_token) {
         Course storage course = courses[_courseId];
         require(course.isActive, "EduPay: course inactive");
         require(course.chapterCount > 0, "EduPay: no chapters");
 
-        uint256 totalCost;
+        uint256 totalPrice6;
         for (uint256 i = 0; i < course.chapterCount; i++) {
             if (!hasAccess[_courseId][msg.sender][i]) {
-                totalCost += chapters[_courseId][i].price;
+                totalPrice6 += chapters[_courseId][i].priceUSD;
             }
         }
-        require(totalCost > 0, "EduPay: all purchased");
+        require(totalPrice6 > 0, "EduPay: all purchased");
 
-        uint256 fee = (totalCost * platformFeePercent) / 100;
-        uint256 tutorShare = totalCost - fee;
+        uint256 totalAmount = _toTokenAmount(totalPrice6, _token);
+        uint256 fee = (totalAmount * platformFeePercent) / 100;
+        uint256 tutorShare = totalAmount - fee;
 
-        require(cUSD.transferFrom(msg.sender, address(this), totalCost), "EduPay: transfer failed");
-        require(cUSD.transfer(course.tutor, tutorShare), "EduPay: tutor pay failed");
+        IERC20 token = IERC20(_token);
+        require(token.transferFrom(msg.sender, address(this), totalAmount), "EduPay: transfer failed");
+        require(token.transfer(course.tutor, tutorShare), "EduPay: tutor pay failed");
+
+        accruedTokenFees[_token] += fee;
 
         for (uint256 i = 0; i < course.chapterCount; i++) {
             hasAccess[_courseId][msg.sender][i] = true;
         }
 
-        course.totalEarned += tutorShare;
-        tutorEarnings[course.tutor] += tutorShare;
+        course.totalEarned += totalPrice6;
+        tutorEarnings[course.tutor] += totalPrice6;
 
-        emit FullCoursePurchased(_courseId, msg.sender, totalCost);
+        emit FullCoursePurchased(_courseId, msg.sender, _token, totalAmount);
     }
 
-    // ── Views ─────────────────────────────────────────────────
+    // ── Views ─────────────────────────────────────────
 
     function checkAccess(uint256 _courseId, uint256 _chapterId, address _student) external view returns (bool) {
         return hasAccess[_courseId][_student][_chapterId];
@@ -181,11 +225,11 @@ contract EduPay {
     function getChapter(uint256 _courseId, uint256 _chapterId)
         external
         view
-        returns (string memory title, uint256 price, bool purchased)
+        returns (string memory title, uint256 priceUSD, bool purchased)
     {
         Chapter storage c = chapters[_courseId][_chapterId];
         require(c.exists, "EduPay: not found");
-        return (c.title, c.price, hasAccess[_courseId][msg.sender][_chapterId]);
+        return (c.title, c.priceUSD, hasAccess[_courseId][msg.sender][_chapterId]);
     }
 
     function getTutorCourses(address _tutor) external view returns (uint256[] memory) {
@@ -196,27 +240,24 @@ contract EduPay {
         external
         view
         courseExists(_courseId)
-        returns (uint256 total)
+        returns (uint256 totalUSD)
     {
         Course storage course = courses[_courseId];
         for (uint256 i = 0; i < course.chapterCount; i++) {
             if (!hasAccess[_courseId][_student][i]) {
-                total += chapters[_courseId][i].price;
+                totalUSD += chapters[_courseId][i].priceUSD;
             }
         }
     }
 
-    function accruedFees() external view returns (uint256) {
-        return cUSD.balanceOf(address(this));
-    }
+    // ── Admin ─────────────────────────────────────────
 
-    // ── Admin ─────────────────────────────────────────────────
-
-    function withdrawFees() external onlyOwner {
-        uint256 bal = cUSD.balanceOf(address(this));
+    function withdrawFees(address _token) external onlyOwner validToken(_token) {
+        uint256 bal = accruedTokenFees[_token];
         require(bal > 0, "EduPay: no fees");
-        require(cUSD.transfer(owner, bal), "EduPay: withdraw failed");
-        emit FeesWithdrawn(owner, bal);
+        accruedTokenFees[_token] = 0;
+        require(IERC20(_token).transfer(owner, bal), "EduPay: withdraw failed");
+        emit FeesWithdrawn(_token, owner, bal);
     }
 
     function setPlatformFee(uint256 _newFee) external onlyOwner {

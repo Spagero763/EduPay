@@ -2,11 +2,13 @@
 
 import Link from "next/link"
 import { useMiniPay } from "@/hooks/useMiniPay"
+import { useAppKit } from "@reown/appkit/react"
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
 export function Navbar() {
-  const { address, cusdBalance, isMiniPay, loading, connect } = useMiniPay()
+  const { address, cusdBalance, isMiniPay, loading } = useMiniPay()
+  const { open } = useAppKit()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -51,16 +53,19 @@ export function Navbar() {
                     MiniPay
                   </span>
                 )}
-                <div className="text-xs border border-[#0D0B08]/12 px-3 py-1.5 rounded-full flex items-center gap-2">
+                <button
+                  onClick={() => open()}
+                  className="text-xs border border-[#0D0B08]/12 px-3 py-1.5 rounded-full flex items-center gap-2 bg-transparent cursor-pointer"
+                >
                   <span className="text-[#C4622D] font-medium tabular-nums">{Number(cusdBalance).toFixed(2)}</span>
                   <span className="text-[#0D0B08]/30">cUSD</span>
                   <span className="text-[#0D0B08]/35 font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
-                </div>
+                </button>
               </div>
             ) : (
               <button
-                onClick={connect}
-                className="text-xs text-[#0D0B08]/50 border border-[#0D0B08]/15 hover:border-[#0D0B08]/35 hover:text-[#0D0B08]/80 px-4 py-1.5 rounded-full tracking-widest uppercase transition-all duration-200"
+                onClick={() => open()}
+                className="text-xs text-[#0D0B08]/50 border border-[#0D0B08]/15 hover:border-[#0D0B08]/35 hover:text-[#0D0B08]/80 px-4 py-1.5 rounded-full tracking-widest uppercase transition-all duration-200 bg-transparent cursor-pointer"
               >
                 Connect
               </button>

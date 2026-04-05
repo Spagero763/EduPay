@@ -2,7 +2,6 @@ import { useState, useEffect } from "react"
 import { ethers } from "ethers"
 import { EDUPAY_ADDRESS, CUSD_ADDRESS, EDUPAY_ABI, CUSD_ABI } from "@/lib/contract"
 import { useAppKit, useAppKitAccount, useAppKitProvider } from "@reown/appkit/react"
-import type { Eip1193Provider } from "ethers"
 
 const PUBLIC_RPC = "https://forno.celo.org"
 
@@ -31,7 +30,7 @@ export function useMiniPay() {
     async function setup() {
       try {
         const web3Provider = new ethers.providers.Web3Provider(
-          walletProvider as Eip1193Provider
+          walletProvider as any
         )
         const _signer = web3Provider.getSigner()
         setSigner(_signer)

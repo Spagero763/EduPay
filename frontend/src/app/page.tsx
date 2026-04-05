@@ -139,7 +139,7 @@ export default function Home() {
           position: "relative",
         }}
       >
-        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="w-full" style={{ width: "100%", maxWidth: 800, margin: "0 auto" }}>
+        <motion.div style={{ y: heroY, opacity: heroOpacity, width: "100%", maxWidth: 800, margin: "0 auto" }}>
           <motion.h1
             initial={{ opacity: 0, y: 44 }}
             animate={{ opacity: 1, y: 0 }}

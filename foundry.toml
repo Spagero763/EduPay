@@ -1,0 +1,13 @@
+[profile.default]
+src     = "src"
+out     = "out"
+libs    = ["lib"]
+solc    = "0.8.20"
+
+[rpc_endpoints]
+celo_mainnet = "https://forno.celo.org"
+celo_testnet = "https://alfajores-forno.celo-testnet.org"
+
+[etherscan]
+celo_mainnet = { key = "${CELOSCAN_API_KEY}", url = "https://api.celoscan.io/api" }
+celo_testnet = { key = "${CELOSCAN_API_KEY}", url = "https://api-alfajores.celoscan.io/api" }

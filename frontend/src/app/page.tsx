@@ -19,6 +19,7 @@ function FadeUp({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: "-50px" })
   return (
+    <motion.div
       ref={ref}
       initial={{ opacity: 0, y: 28 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -41,32 +42,38 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
       transition={{ duration: 0.7, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
     >
       <Link href={`/course/${course.id}`}>
-        <div className="group border-t border-[#0D0B08]/10 py-10 flex items-start justify-between gap-12 hover:border-[#C4622D]/30 transition-all duration-500 cursor-pointer">
-          <div className="flex-1 min-w-0">
-            <div className="text-[10px] text-[#0D0B08]/30 mb-5 uppercase tracking-[0.22em] font-medium">
+        <div
+          className="group"
+          style={{
+            borderTop: "1px solid rgba(13,11,8,0.09)",
+            padding: "40px 0",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: "48px",
+            cursor: "pointer",
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.22em", fontWeight: 500 }}>
               {course.chapterCount} {course.chapterCount === 1 ? "lesson" : "lessons"}
             </div>
-            <h3 className="text-xl font-medium text-[#0D0B08]/85 mb-3 group-hover:text-[#C4622D] transition-colors duration-400 leading-snug">
+            <h3 style={{ fontSize: 20, fontWeight: 500, color: "rgba(13,11,8,0.85)", marginBottom: 12, lineHeight: 1.3 }}>
               {course.title}
             </h3>
-            <p className="text-[#0D0B08]/40 text-sm leading-relaxed max-w-lg line-clamp-2">
+            <p style={{ fontSize: 14, color: "rgba(13,11,8,0.38)", lineHeight: 1.7, maxWidth: 480 }} className="line-clamp-2">
               {course.description}
             </p>
           </div>
-          <div className="text-right shrink-0 pt-9">
-            <div className="text-[10px] text-[#0D0B08]/22 mb-2 uppercase tracking-widest">Tutor</div>
-            <div className="text-xs text-[#0D0B08]/38 font-mono">
+          <div style={{ textAlign: "right", flexShrink: 0, paddingTop: 4 }}>
+            <div style={{ fontSize: 10, color: "rgba(13,11,8,0.22)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.18em" }}>Tutor</div>
+            <div style={{ fontSize: 12, color: "rgba(13,11,8,0.38)", fontFamily: "monospace" }}>
               {course.tutor.slice(0, 6)}...{course.tutor.slice(-4)}
             </div>
-            <div className="mt-4 text-[#C4622D] text-sm font-medium tabular-nums">
+            <div style={{ marginTop: 16, color: "#C4622D", fontSize: 14, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
               {Number(ethers.utils.formatEther(course.totalEarned)).toFixed(2)}
-              <span className="text-[#C4622D]/45 text-xs ml-1">cUSD</span>
+              <span style={{ color: "rgba(196,98,45,0.4)", fontSize: 11, marginLeft: 4 }}>cUSD</span>
             </div>
-          </div>
-          <div className="self-center shrink-0 pt-9 opacity-0 group-hover:opacity-100 transition-all duration-300 -translate-x-1 group-hover:translate-x-0">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="#C4622D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
           </div>
         </div>
       </Link>
@@ -115,39 +122,52 @@ export default function Home() {
   }, [loading])
 
   return (
-    <div className="min-h-screen bg-[#F2ECE2] text-[#0D0B08]">
+    <div style={{ background: "#F2ECE2", minHeight: "100vh" }}>
 
-      {/* Hero */}
+      {/* ── Hero ─────────────────────────────────────── */}
       <section
         ref={heroRef}
-        className="relative min-h-screen flex flex-col items-center justify-center text-center px-8 md:px-16 overflow-hidden"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          padding: "120px 64px 96px",
+          overflow: "hidden",
+          position: "relative",
+        }}
       >
-        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="relative w-full max-w-5xl mx-auto flex flex-col items-center">
-
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-[10px] text-[#0D0B08]/35 uppercase tracking-[0.32em] mb-12 font-medium"
-          >
-            Education on Celo
-          </motion.p>
-
+        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="w-full" style={{ width: "100%", maxWidth: 800, margin: "0 auto" }}>
           <motion.h1
             initial={{ opacity: 0, y: 44 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.1, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="text-[clamp(3rem,8vw,7rem)] font-semibold leading-[1.0] tracking-[-0.03em] text-[#0D0B08] mb-8"
+            transition={{ duration: 1.1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              fontSize: "clamp(3rem, 8vw, 7rem)",
+              fontWeight: 600,
+              lineHeight: 1.0,
+              letterSpacing: "-0.03em",
+              color: "#0D0B08",
+              marginBottom: 16,
+            }}
           >
-            Learn what<br />
-            you need.
+            Learn what<br />you need.
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="text-[clamp(2rem,5vw,4.5rem)] font-semibold leading-[1.0] tracking-[-0.03em] text-[#C4622D] mb-14"
+            transition={{ duration: 0.9, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              fontSize: "clamp(2.2rem, 5vw, 4.5rem)",
+              fontWeight: 600,
+              lineHeight: 1.0,
+              letterSpacing: "-0.03em",
+              color: "#C4622D",
+              marginBottom: 40,
+            }}
           >
             Pay per lesson.
           </motion.p>
@@ -155,8 +175,8 @@ export default function Home() {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.75 }}
-            className="text-[#0D0B08]/40 text-base max-w-sm leading-relaxed mb-12"
+            transition={{ duration: 0.8, delay: 0.65 }}
+            style={{ color: "rgba(13,11,8,0.4)", fontSize: 16, maxWidth: 340, margin: "0 auto 48px", lineHeight: 1.7 }}
           >
             African students pay tutors in cUSD,
             one chapter at a time. No banks. No middlemen.
@@ -165,18 +185,35 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.9 }}
-            className="flex items-center gap-5"
+            transition={{ duration: 0.7, delay: 0.85 }}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}
           >
             <Link
               href="#courses"
-              className="text-xs text-[#0D0B08]/45 hover:text-[#0D0B08]/75 tracking-widest uppercase transition-colors duration-200 border-b border-[#0D0B08]/15 hover:border-[#0D0B08]/35 pb-px"
+              style={{
+                fontSize: 11,
+                color: "rgba(13,11,8,0.42)",
+                textTransform: "uppercase",
+                letterSpacing: "0.18em",
+                borderBottom: "1px solid rgba(13,11,8,0.15)",
+                paddingBottom: 2,
+                textDecoration: "none",
+              }}
             >
               Browse courses
             </Link>
             <Link
               href="/create"
-              className="text-xs bg-[#0D0B08] hover:bg-[#C4622D] text-[#F2ECE2] px-7 py-3.5 tracking-widest uppercase font-medium transition-colors duration-300"
+              style={{
+                fontSize: 11,
+                background: "#0D0B08",
+                color: "#F2ECE2",
+                padding: "14px 32px",
+                textTransform: "uppercase",
+                letterSpacing: "0.18em",
+                fontWeight: 500,
+                textDecoration: "none",
+              }}
             >
               Start teaching
             </Link>
@@ -188,47 +225,62 @@ export default function Home() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.4 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3"
+          style={{ position: "absolute", bottom: 40, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}
         >
-          <span className="text-[9px] text-[#0D0B08]/20 uppercase tracking-[0.3em]">Scroll</span>
+          <span style={{ fontSize: 9, color: "rgba(13,11,8,0.2)", textTransform: "uppercase", letterSpacing: "0.3em" }}>Scroll</span>
           <motion.div
             animate={{ y: [0, 8, 0] }}
             transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
-            className="w-px h-10 bg-gradient-to-b from-[#0D0B08]/15 to-transparent"
+            style={{ width: 1, height: 40, background: "linear-gradient(to bottom, rgba(13,11,8,0.15), transparent)" }}
           />
         </motion.div>
       </section>
 
-      {/* Stats */}
-      <section className="border-t border-[#0D0B08]/8 px-8 md:px-16 py-20">
-        <div className="max-w-5xl mx-auto grid grid-cols-3">
+      {/* ── Stats ────────────────────────────────────── */}
+      <section style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "80px 64px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
           {[
             { value: "cUSD", label: "Mento stablecoin" },
             { value: "95%", label: "Goes to tutors" },
             { value: "IPFS", label: "Decentralised content" },
           ].map((stat, i) => (
             <FadeUp key={i} delay={i * 0.1}>
-              <div className={`text-center ${i === 1 ? "border-x border-[#0D0B08]/8 px-10" : "px-10"}`}>
-                <div className="text-[2.2rem] font-semibold text-[#0D0B08] mb-2 tracking-tight">{stat.value}</div>
-                <div className="text-xs text-[#0D0B08]/30 uppercase tracking-widest">{stat.label}</div>
+              <div style={{
+                textAlign: "center",
+                padding: "0 40px",
+                borderLeft: i > 0 ? "1px solid rgba(13,11,8,0.08)" : "none",
+              }}>
+                <div style={{ fontSize: 36, fontWeight: 600, color: "#0D0B08", marginBottom: 8, letterSpacing: "-0.02em" }}>{stat.value}</div>
+                <div style={{ fontSize: 11, color: "rgba(13,11,8,0.3)", textTransform: "uppercase", letterSpacing: "0.18em" }}>{stat.label}</div>
               </div>
             </FadeUp>
           ))}
         </div>
       </section>
 
-      {/* Courses */}
-      <section id="courses" className="border-t border-[#0D0B08]/8 px-8 md:px-16 py-24">
-        <div className="max-w-5xl mx-auto">
+      {/* ── Courses ──────────────────────────────────── */}
+      <section id="courses" style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "96px 64px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <FadeUp>
-            <div className="flex items-end justify-between mb-16">
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 64 }}>
               <div>
-                <div className="text-[10px] text-[#0D0B08]/28 uppercase tracking-[0.24em] mb-5 font-medium">Available now</div>
-                <h2 className="text-4xl font-semibold text-[#0D0B08] tracking-tight">Courses</h2>
+                <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.24em", marginBottom: 16, fontWeight: 500 }}>
+                  Available now
+                </div>
+                <h2 style={{ fontSize: 40, fontWeight: 600, color: "#0D0B08", letterSpacing: "-0.02em" }}>Courses</h2>
               </div>
               <Link
                 href="/create"
-                className="text-xs text-[#0D0B08]/32 hover:text-[#C4622D] tracking-widest uppercase transition-colors duration-200 border-b border-[#0D0B08]/10 hover:border-[#C4622D]/40 pb-px mb-1"
+                style={{
+                  fontSize: 10,
+                  color: "rgba(13,11,8,0.32)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.2em",
+                  borderBottom: "1px solid rgba(13,11,8,0.1)",
+                  paddingBottom: 2,
+                  textDecoration: "none",
+                  marginBottom: 4,
+                }}
               >
                 Add yours
               </Link>
@@ -238,21 +290,21 @@ export default function Home() {
           {fetching ? (
             <div>
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="border-t border-[#0D0B08]/8 py-10 animate-pulse">
-                  <div className="h-2.5 bg-[#0D0B08]/5 rounded w-14 mb-5" />
-                  <div className="h-5 bg-[#0D0B08]/5 rounded w-52 mb-4" />
-                  <div className="h-3 bg-[#0D0B08]/5 rounded w-72" />
+                <div key={i} style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "40px 0" }}>
+                  <div style={{ height: 10, background: "rgba(13,11,8,0.05)", borderRadius: 4, width: 56, marginBottom: 20 }} />
+                  <div style={{ height: 20, background: "rgba(13,11,8,0.05)", borderRadius: 4, width: 200, marginBottom: 14 }} />
+                  <div style={{ height: 12, background: "rgba(13,11,8,0.05)", borderRadius: 4, width: 280 }} />
                 </div>
               ))}
             </div>
           ) : courses.length === 0 ? (
             <FadeUp>
-              <div className="border-t border-[#0D0B08]/8 py-28 text-center">
-                <p className="text-[#0D0B08]/25 text-base mb-3 font-light">No courses yet</p>
-                <p className="text-[#0D0B08]/15 text-sm mb-10">Be the first educator on EduPay</p>
+              <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "96px 0", textAlign: "center" }}>
+                <p style={{ color: "rgba(13,11,8,0.25)", fontSize: 16, marginBottom: 12, fontWeight: 300 }}>No courses yet</p>
+                <p style={{ color: "rgba(13,11,8,0.15)", fontSize: 13, marginBottom: 40 }}>Be the first educator on EduPay</p>
                 <Link
                   href="/create"
-                  className="text-xs text-[#C4622D] border-b border-[#C4622D]/30 hover:border-[#C4622D] pb-px transition-colors tracking-widest uppercase"
+                  style={{ fontSize: 11, color: "#C4622D", borderBottom: "1px solid rgba(196,98,45,0.3)", paddingBottom: 2, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.18em" }}
                 >
                   Create a course
                 </Link>
@@ -263,28 +315,38 @@ export default function Home() {
               {courses.map((course, i) => (
                 <CourseCard key={course.id} course={course} index={i} />
               ))}
-              <div className="border-t border-[#0D0B08]/8" />
+              <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)" }} />
             </div>
           )}
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="border-t border-[#0D0B08]/8 px-8 md:px-16 py-32">
-        <div className="max-w-5xl mx-auto text-center">
+      {/* ── CTA ──────────────────────────────────────── */}
+      <section style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "120px 64px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", textAlign: "center" }}>
           <FadeUp>
-            <div className="text-[10px] text-[#0D0B08]/28 uppercase tracking-[0.28em] mb-8 font-medium">
+            <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.28em", marginBottom: 32, fontWeight: 500 }}>
               For educators
             </div>
-            <h2 className="text-4xl md:text-5xl font-semibold text-[#0D0B08] leading-[1.06] tracking-tight mb-6 max-w-xl mx-auto">
+            <h2 style={{ fontSize: "clamp(2rem, 5vw, 4rem)", fontWeight: 600, color: "#0D0B08", lineHeight: 1.06, letterSpacing: "-0.025em", marginBottom: 24, maxWidth: 560, margin: "0 auto 24px" }}>
               Share your knowledge.
             </h2>
-            <p className="text-[#0D0B08]/35 text-base mb-12 max-w-sm mx-auto leading-relaxed">
+            <p style={{ color: "rgba(13,11,8,0.35)", fontSize: 15, marginBottom: 48, maxWidth: 360, margin: "0 auto 48px", lineHeight: 1.7 }}>
               Publish your course, set your price per chapter, get paid instantly in cUSD.
             </p>
             <Link
               href="/create"
-              className="inline-block text-xs bg-[#0D0B08] hover:bg-[#C4622D] text-[#F2ECE2] px-10 py-4 tracking-widest uppercase font-medium transition-colors duration-300"
+              style={{
+                display: "inline-block",
+                fontSize: 11,
+                background: "#0D0B08",
+                color: "#F2ECE2",
+                padding: "16px 48px",
+                textTransform: "uppercase",
+                letterSpacing: "0.18em",
+                fontWeight: 500,
+                textDecoration: "none",
+              }}
             >
               Create your course
             </Link>
@@ -292,16 +354,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-[#0D0B08]/8 px-8 md:px-16 py-10">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <span className="text-[#0D0B08]/30 text-xs font-medium uppercase tracking-widest">EduPay</span>
-          <span className="text-[#0D0B08]/18 text-[10px] uppercase tracking-[0.2em]">2026</span>
+      {/* ── Footer ───────────────────────────────────── */}
+      <footer style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "32px 64px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ color: "rgba(13,11,8,0.3)", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.18em" }}>EduPay</span>
+          <span style={{ color: "rgba(13,11,8,0.18)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em" }}>2026</span>
           
           <a  href="https://celoscan.io/address/0x8A2D3A806f932616ba07D3Fc42bAb1Bdf6f312a1"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[#0D0B08]/22 text-[10px] hover:text-[#C4622D] transition-colors duration-200 font-mono"
+            style={{ color: "rgba(13,11,8,0.22)", fontSize: 10, fontFamily: "monospace", textDecoration: "none" }}
           >
             0x8A2D...12a1
           </a>

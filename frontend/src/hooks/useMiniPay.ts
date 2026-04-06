@@ -76,7 +76,7 @@ export function useMiniPay() {
   async function purchaseChapter(courseId: number, chapterId: number, price: ethers.BigNumber) {
     const eduPay = getEduPay(true)
     return approveAndPurchase(price, async () => {
-      const tx = await eduPay.purchaseChapter(courseId, chapterId)
+      const tx = await eduPay.purchaseChapter(courseId, chapterId, CUSD_ADDRESS)
       return tx.wait()
     })
   }
@@ -84,7 +84,7 @@ export function useMiniPay() {
   async function purchaseFullCourse(courseId: number, totalPrice: ethers.BigNumber) {
     const eduPay = getEduPay(true)
     return approveAndPurchase(totalPrice, async () => {
-      const tx = await eduPay.purchaseFullCourse(courseId)
+      const tx = await eduPay.purchaseFullCourse(courseId, CUSD_ADDRESS)
       return tx.wait()
     })
   }

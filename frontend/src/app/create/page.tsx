@@ -65,7 +65,7 @@ export default function CreateCourse() {
     setSubmitting(true)
     try {
       for (const ch of chapters) {
-        await addChapter(courseId!, ch.title.trim(), ch.contentHash.trim(), ethers.utils.parseEther(ch.price))
+        await addChapter(courseId!, ch.title.trim(), ch.contentHash.trim(), ethers.utils.parseUnits(ch.price, 6))
       }
       setStep("done")
     } catch (err: any) {

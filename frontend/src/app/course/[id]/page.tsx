@@ -56,7 +56,7 @@ export default function CoursePage() {
         chList.push({
           id: i,
           title: ch.title,
-          price: ch.price.toString(),
+          price: ch.priceUSD.toString(),
           purchased: ch.purchased,
         })
       }
@@ -202,7 +202,7 @@ export default function CoursePage() {
                 Full course
               </div>
               <div style={{ fontSize: 18, fontWeight: 600, color: "#0D0B08" }}>
-                {Number(ethers.utils.formatEther(fullPrice)).toFixed(2)}
+                {Number(ethers.utils.formatUnits(fullPrice, 6)).toFixed(2)}
                 <span style={{ fontSize: 12, color: "rgba(13,11,8,0.35)", marginLeft: 6, fontWeight: 400 }}>cUSD</span>
               </div>
             </div>
@@ -251,7 +251,7 @@ export default function CoursePage() {
                     {ch.title}
                   </h3>
                   <div style={{ fontSize: 13, color: "#C4622D", fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
-                    {Number(ethers.utils.formatEther(ch.price)).toFixed(2)}
+                    {Number(ethers.utils.formatUnits(ch.price, 6)).toFixed(2)}
                     <span style={{ color: "rgba(196,98,45,0.4)", fontSize: 11, marginLeft: 4 }}>cUSD</span>
                   </div>
                 </div>

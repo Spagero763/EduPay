@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { ethers } from "ethers"
 import Link from "next/link"
 import { useMiniPay } from "@/hooks/useMiniPay"
+import { formatPrice } from "@/lib/formatPrice"
 import { motion } from "framer-motion"
 
 type TutorCourse = {
@@ -264,7 +265,7 @@ export default function Dashboard() {
                             </div>
                             <div style={{ textAlign: "right", flexShrink: 0 }}>
                               <div style={{ fontSize: 20, fontWeight: 600, color: "#C4622D", letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums" }}>
-                                {Number(ethers.utils.formatUnits(course.totalEarned, 6)).toFixed(2)}
+                                {formatPrice(course.totalEarned)}
                                 <span style={{ fontSize: 11, color: "rgba(196,98,45,0.4)", marginLeft: 4, fontWeight: 400 }}>cUSD</span>
                               </div>
                               <div style={{ ...labelStyle, marginTop: 4 }}>earned</div>
@@ -348,7 +349,7 @@ export default function Dashboard() {
                                 Unlocked
                               </div>
                               <div style={{ fontSize: 13, color: "rgba(13,11,8,0.3)", fontVariantNumeric: "tabular-nums" }}>
-                                {Number(ethers.utils.formatUnits(ch.price, 6)).toFixed(2)} USDC
+                                {formatPrice(ch.price)} USDC
                               </div>
                             </div>
                           </div>

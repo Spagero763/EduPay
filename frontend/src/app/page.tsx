@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { ethers } from "ethers"
 import Link from "next/link"
 import { useMiniPay } from "@/hooks/useMiniPay"
+import { formatPrice } from "@/lib/formatPrice"
 import { motion, useScroll, useTransform, useInView } from "framer-motion"
 
 type Course = {
@@ -71,7 +72,7 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
               {course.tutor.slice(0, 6)}...{course.tutor.slice(-4)}
             </div>
             <div style={{ marginTop: 16, color: "#C4622D", fontSize: 14, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
-              {Number(ethers.utils.formatUnits(course.totalEarned, 6)).toFixed(2)}
+              {formatPrice(course.totalEarned)}
               <span style={{ color: "rgba(196,98,45,0.4)", fontSize: 11, marginLeft: 4 }}>USDC</span>
             </div>
           </div>

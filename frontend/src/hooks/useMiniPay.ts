@@ -114,6 +114,16 @@ export function useMiniPay() {
     return tx.wait()
   }
 
+  async function updateChapter(
+    courseId: number,
+    chapterId: number,
+    price: ethers.BigNumber
+  ) {
+    const eduPay = getEduPay(true)
+    const tx = await eduPay.updateChapter(courseId, chapterId, "", price)
+    return tx.wait()
+  }
+
   return {
     isMiniPay,
     address: address ?? null,
@@ -129,5 +139,6 @@ export function useMiniPay() {
     purchaseFullCourse,
     createCourse,
     addChapter,
+    updateChapter,
   }
 }

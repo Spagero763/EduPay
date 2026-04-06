@@ -5,6 +5,7 @@ export const USDC_ADDRESS = "0xcebA9300f2b948710d2653dD7B07f33A8B32118C"
 export const EDUPAY_ABI = [
   "function createCourse(string memory _title, string memory _description) external returns (uint256)",
   "function addChapter(uint256 _courseId, string memory _title, string memory _contentHash, uint256 _price) external returns (uint256)",
+  "function updateChapter(uint256 _courseId, uint256 _chapterId, string memory _newContentHash, uint256 _newPrice) external",
   "function purchaseChapter(uint256 _courseId, uint256 _chapterId, address _token) external",
   "function purchaseFullCourse(uint256 _courseId, address _token) external",
   "function checkAccess(uint256 _courseId, uint256 _chapterId, address _student) external view returns (bool)",

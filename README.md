@@ -35,6 +35,17 @@ Contract → pays tutor instantly (95%) → holds 5% platform fee → unlocks co
 - Self Protocol integration for tutor humanity verification
 
 
+## Getting Started (Beginners)
+
+New to EduPay? Read the full step-by-step guide: [GUIDE.md](./GUIDE.md)
+
+It covers:
+- Setting up MiniPay or any Celo-compatible wallet
+- Getting test cUSD
+- How tutors create courses and upload content to IPFS
+- How students purchase chapters
+- Common issues and how to fix them
+
 ## Contract Architecture
 ```
 EduPay.sol

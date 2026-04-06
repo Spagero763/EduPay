@@ -71,8 +71,8 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
               {course.tutor.slice(0, 6)}...{course.tutor.slice(-4)}
             </div>
             <div style={{ marginTop: 16, color: "#C4622D", fontSize: 14, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
-              {Number(ethers.utils.formatEther(course.totalEarned)).toFixed(2)}
-              <span style={{ color: "rgba(196,98,45,0.4)", fontSize: 11, marginLeft: 4 }}>cUSD</span>
+              {Number(ethers.utils.formatUnits(course.totalEarned, 6)).toFixed(2)}
+              <span style={{ color: "rgba(196,98,45,0.4)", fontSize: 11, marginLeft: 4 }}>USDC</span>
             </div>
           </div>
         </div>

@@ -62,7 +62,7 @@ export default function Dashboard() {
         earned = earned.add(c.totalEarned)
       }
       setTutorCourses(courses)
-      setTotalEarned(ethers.utils.formatEther(earned))
+      setTotalEarned(ethers.utils.formatUnits(earned, 6))
 
       // Student purchased chapters — scan all courses
       const courseCount = await eduPay.courseCount()
@@ -78,7 +78,7 @@ export default function Dashboard() {
               courseTitle: c.title,
               chapterId: chid,
               chapterTitle: ch.title,
-              price: ch.price.toString(),
+              price: ch.priceUSD.toString(),
             })
           }
         }
@@ -264,7 +264,7 @@ export default function Dashboard() {
                             </div>
                             <div style={{ textAlign: "right", flexShrink: 0 }}>
                               <div style={{ fontSize: 20, fontWeight: 600, color: "#C4622D", letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums" }}>
-                                {Number(ethers.utils.formatEther(course.totalEarned)).toFixed(2)}
+                                {Number(ethers.utils.formatUnits(course.totalEarned, 6)).toFixed(2)}
                                 <span style={{ fontSize: 11, color: "rgba(196,98,45,0.4)", marginLeft: 4, fontWeight: 400 }}>cUSD</span>
                               </div>
                               <div style={{ ...labelStyle, marginTop: 4 }}>earned</div>
@@ -348,7 +348,7 @@ export default function Dashboard() {
                                 Unlocked
                               </div>
                               <div style={{ fontSize: 13, color: "rgba(13,11,8,0.3)", fontVariantNumeric: "tabular-nums" }}>
-                                {Number(ethers.utils.formatEther(ch.price)).toFixed(2)} cUSD
+                                {Number(ethers.utils.formatUnits(ch.price, 6)).toFixed(2)} USDC
                               </div>
                             </div>
                           </div>

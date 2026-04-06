@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { ethers } from "ethers"
 import { useParams, useRouter } from "next/navigation"
 import { useMiniPay } from "@/hooks/useMiniPay"
+import { parseError } from "@/lib/parseError"
 import { motion } from "framer-motion"
 
 type Chapter = {
@@ -86,7 +87,7 @@ export default function CoursePage() {
       await purchaseChapter(courseId, chapterId, ethers.BigNumber.from(price))
       await fetchCourse()
     } catch (err: any) {
-      setError(err?.message ?? "Transaction failed.")
+      setError(parseError(err))
     } finally {
       setBuying(null)
     }
@@ -100,7 +101,7 @@ export default function CoursePage() {
       await purchaseFullCourse(courseId, ethers.BigNumber.from(fullPrice))
       await fetchCourse()
     } catch (err: any) {
-      setError(err?.message ?? "Transaction failed.")
+      setError(parseError(err))
     } finally {
       setBuying(null)
     }

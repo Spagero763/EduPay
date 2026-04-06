@@ -4,6 +4,7 @@ import { useState } from "react"
 import { ethers } from "ethers"
 import { useRouter } from "next/navigation"
 import { useMiniPay } from "@/hooks/useMiniPay"
+import { parseError } from "@/lib/parseError"
 import { motion, AnimatePresence } from "framer-motion"
 
 type Chapter = {
@@ -50,7 +51,7 @@ export default function CreateCourse() {
       setCourseId(id)
       setStep("chapters")
     } catch (err: any) {
-      setError(err?.message ?? "Transaction failed.")
+      setError(parseError(err))
     } finally {
       setSubmitting(false)
     }
@@ -69,7 +70,7 @@ export default function CreateCourse() {
       }
       setStep("done")
     } catch (err: any) {
-      setError(err?.message ?? "Transaction failed.")
+      setError(parseError(err))
     } finally {
       setSubmitting(false)
     }

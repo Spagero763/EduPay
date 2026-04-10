@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react"
 import { ethers } from "ethers"
-import { EDUPAY_ADDRESS, CUSD_ADDRESS, EDUPAY_ABI, CUSD_ABI } from "@/lib/contract"
+import { EDUPAY_ADDRESS, USDC_ADDRESS, EDUPAY_ABI, USDC_ABI } from "@/lib/contract"
 import { useAppKit, useAppKitAccount, useAppKitProvider } from "@reown/appkit/react"
-import type { Eip1193Provider } from "ethers"
 
 const PUBLIC_RPC = "https://forno.celo.org"
 
@@ -31,15 +30,15 @@ export function useMiniPay() {
     async function setup() {
       try {
         const web3Provider = new ethers.providers.Web3Provider(
-          walletProvider as Eip1193Provider
+          walletProvider as any
         )
         const _signer = web3Provider.getSigner()
         setSigner(_signer)
         setProvider(web3Provider)
 
-        const cusd = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, web3Provider)
-        const bal = await cusd.balanceOf(address)
-        setCusdBalance(ethers.utils.formatEther(bal))
+        const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, web3Provider)
+        const bal = await usdc.balanceOf(address)
+        setCusdBalance(ethers.utils.formatUnits(bal, 6))
       } catch (err) {
         console.error("wallet setup error:", err)
       }
@@ -57,18 +56,18 @@ export function useMiniPay() {
     return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, runner)
   }
 
-  function getCusd(withSigner = false) {
+  function getUsdc(withSigner = false) {
     const runner = withSigner ? signer : provider
     if (!runner) throw new Error("No provider")
-    return new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, runner)
+    return new ethers.Contract(USDC_ADDRESS, USDC_ABI, runner)
   }
 
   async function approveAndPurchase(amount: ethers.BigNumber, action: () => Promise<any>) {
     if (!signer || !address) throw new Error("Not connected")
-    const cusd = getCusd(true)
-    const allowance = await cusd.allowance(address, EDUPAY_ADDRESS)
+    const usdc = getUsdc(true)
+    const allowance = await usdc.allowance(address, EDUPAY_ADDRESS)
     if (allowance.lt(amount)) {
-      const tx = await cusd.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256)
+      const tx = await usdc.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256)
       await tx.wait()
     }
     return action()
@@ -77,7 +76,7 @@ export function useMiniPay() {
   async function purchaseChapter(courseId: number, chapterId: number, price: ethers.BigNumber) {
     const eduPay = getEduPay(true)
     return approveAndPurchase(price, async () => {
-      const tx = await eduPay.purchaseChapter(courseId, chapterId)
+      const tx = await eduPay.purchaseChapter(courseId, chapterId, USDC_ADDRESS)
       return tx.wait()
     })
   }
@@ -85,7 +84,7 @@ export function useMiniPay() {
   async function purchaseFullCourse(courseId: number, totalPrice: ethers.BigNumber) {
     const eduPay = getEduPay(true)
     return approveAndPurchase(totalPrice, async () => {
-      const tx = await eduPay.purchaseFullCourse(courseId)
+      const tx = await eduPay.purchaseFullCourse(courseId, USDC_ADDRESS)
       return tx.wait()
     })
   }
@@ -115,6 +114,16 @@ export function useMiniPay() {
     return tx.wait()
   }
 
+  async function updateChapter(
+    courseId: number,
+    chapterId: number,
+    price: ethers.BigNumber
+  ) {
+    const eduPay = getEduPay(true)
+    const tx = await eduPay.updateChapter(courseId, chapterId, "", price)
+    return tx.wait()
+  }
+
   return {
     isMiniPay,
     address: address ?? null,
@@ -125,10 +134,11 @@ export function useMiniPay() {
     loading,
     connect,
     getEduPay,
-    getCusd,
+    getUsdc,
     purchaseChapter,
     purchaseFullCourse,
     createCourse,
     addChapter,
+    updateChapter,
   }
 }

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { ethers } from "ethers"
 import { useParams, useRouter } from "next/navigation"
 import { useMiniPay } from "@/hooks/useMiniPay"
+import { parseError } from "@/lib/parseError"
+import { formatPrice, isLegacyPrice } from "@/lib/formatPrice"
 import { motion } from "framer-motion"
 
 type Chapter = {
@@ -56,7 +58,7 @@ export default function CoursePage() {
         chList.push({
           id: i,
           title: ch.title,
-          price: ch.price.toString(),
+          price: ch.priceUSD.toString(),
           purchased: ch.purchased,
         })
       }
@@ -80,13 +82,17 @@ export default function CoursePage() {
 
   async function handleBuyChapter(chapterId: number, price: string) {
     if (!address) { connect(); return }
+    if (isLegacyPrice(price)) {
+      setError("This chapter has an incorrect price set by the tutor and cannot be purchased. The tutor needs to update it.")
+      return
+    }
     setBuying(chapterId)
     setError(null)
     try {
       await purchaseChapter(courseId, chapterId, ethers.BigNumber.from(price))
       await fetchCourse()
     } catch (err: any) {
-      setError(err?.message ?? "Transaction failed.")
+      setError(parseError(err))
     } finally {
       setBuying(null)
     }
@@ -94,13 +100,17 @@ export default function CoursePage() {
 
   async function handleBuyFull() {
     if (!address) { connect(); return }
+    if (chapters.some(ch => isLegacyPrice(ch.price))) {
+      setError("One or more chapters have an incorrect price and cannot be purchased. The tutor needs to update them.")
+      return
+    }
     setBuying("full")
     setError(null)
     try {
       await purchaseFullCourse(courseId, ethers.BigNumber.from(fullPrice))
       await fetchCourse()
     } catch (err: any) {
-      setError(err?.message ?? "Transaction failed.")
+      setError(parseError(err))
     } finally {
       setBuying(null)
     }
@@ -202,7 +212,7 @@ export default function CoursePage() {
                 Full course
               </div>
               <div style={{ fontSize: 18, fontWeight: 600, color: "#0D0B08" }}>
-                {Number(ethers.utils.formatEther(fullPrice)).toFixed(2)}
+                {formatPrice(fullPrice)}
                 <span style={{ fontSize: 12, color: "rgba(13,11,8,0.35)", marginLeft: 6, fontWeight: 400 }}>cUSD</span>
               </div>
             </div>
@@ -251,7 +261,7 @@ export default function CoursePage() {
                     {ch.title}
                   </h3>
                   <div style={{ fontSize: 13, color: "#C4622D", fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
-                    {Number(ethers.utils.formatEther(ch.price)).toFixed(2)}
+                    {formatPrice(ch.price)}
                     <span style={{ color: "rgba(196,98,45,0.4)", fontSize: 11, marginLeft: 4 }}>cUSD</span>
                   </div>
                 </div>

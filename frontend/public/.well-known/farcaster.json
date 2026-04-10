@@ -1,0 +1,21 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjEsInR5cGUiOiJjdXN0b2R5IiwKImtleSI6IjB4NTBCMEExNjQ1YjI3NEExNTJhMUMzNEIwMjUxQzBBYzUyNzI1QmFBYzEifQ",
+    "payload": "eyJkb21haW4iOiJlZHVwYXkudmVyY2VsLmFwcCJ9",
+    "signature": "placeholder"
+  },
+  "frame": {
+    "version": "1",
+    "name": "EduPay",
+    "iconUrl": "https://edupay.vercel.app/icon.png",
+    "homeUrl": "https://edupay.vercel.app",
+    "imageUrl": "https://edupay.vercel.app/og.png",
+    "screenshotUrls": [],
+    "tags": ["education", "celo", "payments", "web3"],
+    "primaryCategory": "education",
+    "buttonTitle": "Browse Courses",
+    "splashImageUrl": "https://edupay.vercel.app/splash.png",
+    "splashBackgroundColor": "#F2ECE2",
+    "webhookUrl": "https://edupay.vercel.app/api/webhook"
+  }
+}

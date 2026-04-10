@@ -5,12 +5,14 @@ import { useMiniPay } from "@/hooks/useMiniPay"
 import { useAppKit } from "@reown/appkit/react"
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { GuideModal } from "@/components/GuideModal"
 
 export function Navbar() {
   const { address, cusdBalance, isMiniPay, loading } = useMiniPay()
   const { open } = useAppKit()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 50)
@@ -43,6 +45,12 @@ export function Navbar() {
                 {label}
               </Link>
             ))}
+            <button
+              onClick={() => setGuideOpen(true)}
+              className="text-xs text-[#0D0B08]/40 hover:text-[#0D0B08]/80 tracking-widest uppercase transition-colors duration-200 bg-transparent cursor-pointer"
+            >
+              Guide
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -99,9 +107,19 @@ export function Navbar() {
                 </Link>
               </motion.div>
             ))}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.08 }}>
+              <button
+                onClick={() => { setMenuOpen(false); setGuideOpen(true) }}
+                className="text-3xl font-light text-[#0D0B08] hover:text-[#C4622D] tracking-tight transition-colors bg-transparent cursor-pointer"
+              >
+                Guide
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <GuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
     </>
   )
 }

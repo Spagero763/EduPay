@@ -94,66 +94,74 @@ cUSD is the stablecoin used on EduPay. You need it to buy chapters.
 
 ## 5. For Tutors — Publishing a Course
 
+## How to Create a Course (Step by Step)
+
 ### Step 1 — Connect your wallet
-Connect the wallet you want to receive payments in. All payouts go to this address.
+Click **Connect** in the navbar. Use MetaMask, Valora, or MiniPay on Celo mainnet.
 
-### Step 2 — Create a course
-1. Go to **Create Course** in the app
-2. Enter a title and description
-3. Click **Create** — this sends a transaction to the blockchain
-4. Wait for confirmation (usually under 10 seconds on Celo)
+### Step 2 — Go to Teach
+Click **Teach** in the navbar or go to `/create`.
 
-### Step 3 — Upload your chapter content to IPFS
-Before adding a chapter, you need to upload your content (PDF, video link, text) to IPFS and get a content hash. See [Section 6](#6-how-to-upload-content-to-ipfs-pinata) for how to do this.
+### Step 3 — Fill in course details
+- **Title** — clear, descriptive name
+- **Description** — what students will learn
 
-### Step 4 — Add a chapter
-1. Go to your course dashboard
-2. Click **Add Chapter**
-3. Fill in:
-   - **Title** — the chapter name
-   - **Content Hash** — the IPFS CID you got from Pinata (looks like `QmXyz...`)
-   - **Price** — how much cUSD students pay for this chapter
-4. Click **Add Chapter** and confirm the transaction
+Click **Create course on Celo** — this sends a transaction. Confirm in your wallet.
 
-Repeat Step 3 and 4 for every chapter in your course.
+### Step 4 — Add chapters
+For each chapter:
+- **Title** — chapter name
+- **Content** — upload a file (PDF, video, text) OR write directly in the editor. Content is uploaded to IPFS automatically — no Pinata account needed.
+- **Price** — set in cUSD (e.g. 0.50 = $0.50)
+
+Click **Publish lessons on Celo** — one transaction per chapter.
+
+### Step 5 — Share your course
+Your course is now live at `edupay.vercel.app/course/[id]`. Share the link with students.
+
+---
+
+## How to Buy a Lesson
+
+### Step 1 — Browse courses
+Go to the homepage and click any course.
+
+### Step 2 — Connect wallet
+Click **Connect** — use any Celo-compatible wallet. Students need cUSD.
+
+### Step 3 — Buy a chapter
+Click **Buy lesson** next to any chapter. Two transactions:
+1. Approve cUSD spend
+2. Purchase the chapter
+
+### Step 4 — Access content
+After purchase, click **Read lesson** to access the IPFS content.
 
 ---
 
-## 6. How to Upload Content to IPFS (Pinata)
+## How to Get cUSD
 
-IPFS is a decentralized storage system. Instead of hosting files on a server you own, you upload them to IPFS and get a unique content hash (called a CID) back. That CID is what you store on-chain — students can only retrieve the file if they have purchased the chapter.
-
-### Step 1 — Create a free Pinata account
-1. Go to `https://pinata.cloud`
-2. Click **Sign Up** and create a free account
-3. Verify your email and log in
-
-### Step 2 — Get your API key
-1. In the Pinata dashboard, click **API Keys** in the left sidebar
-2. Click **New Key**
-3. Enable the **pinFileToIPFS** permission
-4. Give it a name like `edupay`
-5. Click **Generate Key**
-6. Copy the **JWT token** shown — you will only see it once
-
-### Step 3 — Upload your file
-#### Manually (easiest way to start)
-1. In the Pinata dashboard click **Upload** → **File**
-2. Select your file (PDF, image, video, etc.)
-3. Click **Upload**
-4. Find your file in the list — copy the **CID** (looks like `QmXyz...abc`)
-5. Paste that CID as the **Content Hash** when adding a chapter on EduPay
-
-#### Via the app (when integrated)
-The EduPay frontend will eventually handle uploads for you. Until then, upload manually on Pinata and paste the CID.
-
-### Viewing uploaded content
-Any uploaded file can be viewed at:
-```
-https://gateway.pinata.cloud/ipfs/YOUR_CID_HERE
-```
+| Method | Steps |
+|---|---|
+| MiniPay | Open MiniPay → Add Money → Buy cUSD |
+| Valora | Open Valora → Buy → Select cUSD |
+| Mento | Go to mento.org → Swap CELO to cUSD |
 
 ---
+
+## Farcaster Mini App
+
+EduPay is available as a Farcaster Mini App. Share `https://edupay.vercel.app` in any Farcaster client to embed the app directly in your feed.
+
+---
+
+## Smart Contracts
+
+| Contract | Network | Address |
+|---|---|---|
+| EduPay | Celo Mainnet | `0xDBA56f8d23c69Dbd9659be4ca18133962BC86191` |
+
+Accepts: cUSD + USDC (Circle)
 
 ## 7. Common Issues and Fixes
 

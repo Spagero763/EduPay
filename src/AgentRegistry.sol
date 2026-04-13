@@ -54,6 +54,7 @@ contract AgentRegistry {
     function getReputation(uint256 _agentId) external view returns (
         int256 total, uint256 count, int256 average
     ) {
+        require(_agentId < agentCount, "Agent not found"); // <--- SAFETY FIX
         total   = totalScore[_agentId];
         count   = feedbacks[_agentId].length;
         average = count > 0 ? total / int256(count) : int256(0);

@@ -1,4 +1,4 @@
-{
+`{
   "transactions": [
     {
       "hash": "0xe1775fbbd53242d61c2bada77472b4675c31ac0919d41cdab44122010e1f0529",
@@ -7,7 +7,7 @@
       "contractAddress": "0xdba56f8d23c69dbd9659be4ca18133962bc86191",
       "function": null,
       "arguments": null,
-      "transaction": {
+      "transaction": {6
         "from": "0x50bca645b274a152a1c64b6251c0ac52725baac1",
         "gas": "0x468e7c",
         "value": "0x0",

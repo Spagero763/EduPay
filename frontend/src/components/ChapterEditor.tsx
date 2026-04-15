@@ -2,228 +2,174 @@
 
 import { useState, useRef } from "react"
 
-interface ChapterEditorProps {
-  onSave: (contentHash: string) => void
-  value?: string
+interface Block {
+  type: "text" | "image" | "url"
+  content: string
 }
 
-export function ChapterEditor({ onSave, value }: ChapterEditorProps) {
-  const [tab, setTab] = useState<"write" | "image" | "link">("write")
-  const [text, setText] = useState("")
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [link, setLink] = useState("")
+interface ChapterEditorProps {
+  onSave: (encoded: string) => void
+}
+
+export function ChapterEditor({ onSave }: ChapterEditorProps) {
+  const [blocks, setBlocks] = useState<Block[]>([{ type: "text", content: "" }])
   const [saved, setSaved] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const labelStyle = {
-    fontSize: 10,
-    color: "rgba(13,11,8,0.3)",
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.22em",
-    fontWeight: 500,
+  const label: React.CSSProperties = {
+    fontSize: 10, color: "rgba(13,11,8,0.3)",
+    textTransform: "uppercase", letterSpacing: "0.22em", fontWeight: 500,
   }
 
-  function handleSaveText() {
-    if (!text.trim()) return
-    // Encode text as base64 data URI
-    const encoded = btoa(unescape(encodeURIComponent(text)))
-    const hash = `data:text/plain;base64,${encoded}`
-    onSave(hash)
-    setSaved(true)
+  function addBlock(type: "text" | "image" | "url") {
+    setBlocks(prev => [...prev, { type, content: "" }])
+    setSaved(false)
   }
 
-  function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  function updateBlock(index: number, content: string) {
+    setBlocks(prev => prev.map((b, i) => i === index ? { ...b, content } : b))
+    setSaved(false)
+  }
+
+  function removeBlock(index: number) {
+    setBlocks(prev => prev.filter((_, i) => i !== index))
+    setSaved(false)
+  }
+
+  function handleImageUpload(index: number, file: File) {
     const reader = new FileReader()
     reader.onload = () => {
-      const dataUrl = reader.result as string
-      setImagePreview(dataUrl)
-      onSave(dataUrl) // store image as base64 data URI
-      setSaved(true)
+      updateBlock(index, reader.result as string)
     }
     reader.readAsDataURL(file)
   }
 
-  function handleLink() {
-    if (!link.trim()) return
-    onSave(link.trim())
+  function handleSave() {
+    const validBlocks = blocks.filter(b => b.content.trim())
+    if (validBlocks.length === 0) return
+    // Encode all blocks as base64 JSON
+    const json = JSON.stringify(validBlocks)
+    const encoded = btoa(unescape(encodeURIComponent(json)))
+    onSave(`data:application/json;base64,${encoded}`)
     setSaved(true)
   }
 
+  const btnStyle = (active = false): React.CSSProperties => ({
+    fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase",
+    padding: "8px 16px", background: active ? "#0D0B08" : "transparent",
+    border: "1px solid rgba(13,11,8,0.15)", color: active ? "#F2ECE2" : "rgba(13,11,8,0.4)",
+    cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+  })
+
   return (
     <div>
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "1px solid rgba(13,11,8,0.08)" }}>
-        {[
-          { key: "write", label: "Write text" },
-          { key: "image", label: "Upload image" },
-          { key: "link", label: "Paste link" },
-        ].map(t => (
-          <button
-            key={t.key}
-            onClick={() => { setTab(t.key as any); setSaved(false) }}
-            style={{
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              padding: "10px 20px",
-              background: "none",
-              border: "none",
-              borderBottom: tab === t.key ? "2px solid #0D0B08" : "2px solid transparent",
-              color: tab === t.key ? "#0D0B08" : "rgba(13,11,8,0.3)",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              marginBottom: -1,
-              transition: "all 0.2s",
-            }}
-          >
-            {t.label}
-          </button>
+      {/* Blocks */}
+      <div style={{ marginBottom: 24 }}>
+        {blocks.map((block, i) => (
+          <div key={i} style={{ marginBottom: 20, position: "relative" }}>
+            {/* Remove button */}
+            {blocks.length > 1 && (
+              <button
+                onClick={() => removeBlock(i)}
+                style={{ position: "absolute", top: 0, right: 0, fontSize: 10, color: "rgba(13,11,8,0.25)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Remove
+              </button>
+            )}
+
+            {block.type === "text" && (
+              <div>
+                <div style={{ ...label, marginBottom: 8 }}>Text block {i + 1}</div>
+                <textarea
+                  value={block.content}
+                  onChange={e => updateBlock(i, e.target.value)}
+                  placeholder="Write your lesson content here..."
+                  rows={6}
+                  style={{ width: "100%", background: "rgba(13,11,8,0.02)", border: "1px solid rgba(13,11,8,0.08)", padding: "14px", fontSize: 14, color: "#0D0B08", fontFamily: "inherit", outline: "none", resize: "vertical", lineHeight: 1.8, marginTop: 0 }}
+                />
+              </div>
+            )}
+
+            {block.type === "image" && (
+              <div>
+                <div style={{ ...label, marginBottom: 8 }}>Image block {i + 1}</div>
+                {block.content ? (
+                  <div>
+                    <img src={block.content} alt="Lesson" style={{ width: "100%", maxHeight: 240, objectFit: "cover", marginBottom: 8 }} />
+                    <button onClick={() => updateBlock(i, "")} style={{ fontSize: 10, color: "rgba(13,11,8,0.3)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.18em" }}>
+                      Replace image
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileRef}
+                      style={{ display: "none" }}
+                      onChange={e => {
+                        const file = e.target.files?.[0]
+                        if (file) handleImageUpload(i, file)
+                      }}
+                    />
+                    <button
+                      onClick={() => fileRef.current?.click()}
+                      style={{ width: "100%", padding: "32px", border: "1px dashed rgba(13,11,8,0.15)", background: "transparent", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      <div style={{ ...label }}>Click to upload image</div>
+                      <div style={{ fontSize: 11, color: "rgba(13,11,8,0.2)", marginTop: 6 }}>PNG, JPG, GIF, WEBP</div>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {block.type === "url" && (
+              <div>
+                <div style={{ ...label, marginBottom: 8 }}>Link block {i + 1}</div>
+                <input
+                  value={block.content}
+                  onChange={e => updateBlock(i, e.target.value)}
+                  placeholder="https://youtube.com/... or https://docs.google.com/..."
+                  style={{ width: "100%", background: "transparent", border: "none", borderBottom: "1px solid rgba(13,11,8,0.15)", padding: "12px 0", fontSize: 13, color: "#0D0B08", fontFamily: "inherit", outline: "none" }}
+                />
+                <div style={{ fontSize: 11, color: "rgba(13,11,8,0.2)", marginTop: 6 }}>
+                  YouTube, Google Drive, Notion, or any URL
+                </div>
+              </div>
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Write text */}
-      {tab === "write" && (
-        <div>
-          <div style={{ ...labelStyle, marginBottom: 12 }}>Chapter content</div>
-          <textarea
-            value={text}
-            onChange={e => { setText(e.target.value); setSaved(false) }}
-            placeholder={`Write your lesson content here.\n\nSupports:\n- Plain text\n- Bullet points\n- Code snippets\n\nStudents get instant access after purchase.`}
-            rows={12}
-            style={{
-              width: "100%",
-              background: "rgba(13,11,8,0.02)",
-              border: "1px solid rgba(13,11,8,0.08)",
-              padding: "16px",
-              fontSize: 14,
-              color: "#0D0B08",
-              fontFamily: "inherit",
-              outline: "none",
-              resize: "vertical",
-              lineHeight: 1.8,
-              borderRadius: 0,
-            }}
-          />
-          <button
-            onClick={handleSaveText}
-            disabled={!text.trim()}
-            style={{
-              marginTop: 16,
-              width: "100%",
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: "#F2ECE2",
-              background: saved ? "#C4622D" : "#0D0B08",
-              border: "none",
-              padding: "16px",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              opacity: !text.trim() ? 0.4 : 1,
-              transition: "background 0.3s",
-            }}
-          >
-            {saved ? "✓ Content saved" : "Save content"}
-          </button>
-        </div>
-      )}
+      {/* Add block buttons */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        <div style={{ ...label, display: "flex", alignItems: "center", marginRight: 8 }}>Add:</div>
+        <button onClick={() => addBlock("text")} style={btnStyle()}>+ Text</button>
+        <button onClick={() => addBlock("image")} style={btnStyle()}>+ Image</button>
+        <button onClick={() => addBlock("url")} style={btnStyle()}>+ Link</button>
+      </div>
 
-      {/* Upload image */}
-      {tab === "image" && (
-        <div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/png,image/jpeg,image/gif,image/webp"
-            onChange={handleImage}
-            style={{ display: "none" }}
-          />
-          {imagePreview ? (
-            <div>
-              <img
-                src={imagePreview}
-                alt="Chapter content"
-                style={{ width: "100%", maxHeight: 300, objectFit: "cover", marginBottom: 16 }}
-              />
-              <div style={{ fontSize: 11, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 12 }}>
-                ✓ Image saved
-              </div>
-              <button
-                onClick={() => { setImagePreview(null); setSaved(false) }}
-                style={{ fontSize: 10, color: "rgba(13,11,8,0.4)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.18em" }}
-              >
-                Replace image
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => fileRef.current?.click()}
-              style={{
-                width: "100%",
-                padding: "48px 24px",
-                border: "1px dashed rgba(13,11,8,0.15)",
-                background: "transparent",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              <div style={{ ...labelStyle, marginBottom: 8 }}>Click to upload image</div>
-              <div style={{ fontSize: 11, color: "rgba(13,11,8,0.2)" }}>PNG, JPG, GIF, WEBP · Max 2MB</div>
-            </button>
-          )}
-        </div>
-      )}
+      {/* Save */}
+      <button
+        onClick={handleSave}
+        disabled={blocks.every(b => !b.content.trim())}
+        style={{
+          width: "100%", fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
+          textTransform: "uppercase", color: "#F2ECE2",
+          background: saved ? "#C4622D" : "#0D0B08",
+          border: "none", padding: "16px", cursor: "pointer",
+          fontFamily: "inherit", opacity: blocks.every(b => !b.content.trim()) ? 0.4 : 1,
+          transition: "background 0.3s",
+        }}
+      >
+        {saved ? "✓ Content saved" : "Save chapter content"}
+      </button>
 
-      {/* Paste link */}
-      {tab === "link" && (
-        <div>
-          <div style={{ ...labelStyle, marginBottom: 12 }}>Content URL</div>
-          <input
-            value={link}
-            onChange={e => { setLink(e.target.value); setSaved(false) }}
-            placeholder="https://docs.google.com/... or https://youtube.com/..."
-            style={{
-              width: "100%",
-              background: "transparent",
-              border: "none",
-              borderBottom: "1px solid rgba(13,11,8,0.15)",
-              padding: "14px 0",
-              fontSize: 13,
-              color: "#0D0B08",
-              fontFamily: "inherit",
-              outline: "none",
-            }}
-          />
-          <div style={{ fontSize: 11, color: "rgba(13,11,8,0.25)", marginTop: 8, lineHeight: 1.6 }}>
-            Paste a Google Doc, YouTube video, Notion page, or any URL.
-            Students get instant access after purchase.
-          </div>
-          <button
-            onClick={handleLink}
-            disabled={!link.trim()}
-            style={{
-              marginTop: 16,
-              width: "100%",
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: "#F2ECE2",
-              background: saved ? "#C4622D" : "#0D0B08",
-              border: "none",
-              padding: "16px",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              opacity: !link.trim() ? 0.4 : 1,
-            }}
-          >
-            {saved ? "✓ Link saved" : "Save link"}
-          </button>
-        </div>
+      {saved && (
+        <p style={{ marginTop: 10, fontSize: 11, color: "#C4622D", textAlign: "center" }}>
+          Content ready — will be stored when you publish the chapter.
+        </p>
       )}
     </div>
   )

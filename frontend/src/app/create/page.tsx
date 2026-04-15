@@ -1,12 +1,12 @@
 "use client"
 
+import { ChapterEditor } from "@/components/ChapterEditor"
 import { useState } from "react"
 import { ethers } from "ethers"
 import { useRouter } from "next/navigation"
 import { useMiniPay } from "@/hooks/useMiniPay"
 import { parseError } from "@/lib/parseError"
 import { motion, AnimatePresence } from "framer-motion"
-import { IPFSUpload } from "@/components/IPFSUpload"
 
 type Chapter = {
   title: string
@@ -27,7 +27,9 @@ export default function CreateCourse() {
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [chapters, setChapters] = useState<Chapter[]>([{ title: "", contentHash: "", price: "" }])
+  const [chapters, setChapters] = useState<Chapter[]>([
+    { title: "", contentHash: "", price: "" }
+  ])
 
   function addChapterRow() {
     setChapters([...chapters, { title: "", contentHash: "", price: "" }])
@@ -44,9 +46,14 @@ export default function CreateCourse() {
   }
 
   async function handleCreateCourse() {
-    if (!title.trim() || !description.trim()) { setError("Title and description are required."); return }
+    if (!title.trim() || !description.trim()) {
+      setError("Title and description are required.")
+      return
+    }
+
     setError(null)
     setSubmitting(true)
+
     try {
       const id = await createCourse(title.trim(), description.trim())
       setCourseId(id)
@@ -60,14 +67,28 @@ export default function CreateCourse() {
 
   async function handleAddChapters() {
     for (const ch of chapters) {
-      if (!ch.title.trim() || !ch.contentHash.trim() || !ch.price) { setError("All chapter fields are required."); return }
-      if (isNaN(Number(ch.price)) || Number(ch.price) <= 0) { setError("Price must be a positive number."); return }
+      if (!ch.title.trim() || !ch.contentHash.trim() || !ch.price) {
+        setError("All chapter fields are required.")
+        return
+      }
+
+      if (isNaN(Number(ch.price)) || Number(ch.price) <= 0) {
+        setError("Price must be a positive number.")
+        return
+      }
     }
+
     setError(null)
     setSubmitting(true)
+
     try {
       for (const ch of chapters) {
-        await addChapter(courseId!, ch.title.trim(), ch.contentHash.trim(), ethers.utils.parseUnits(ch.price, 6))
+        await addChapter(
+          courseId!,
+          ch.title.trim(),
+          ch.contentHash.trim(),
+          ethers.utils.parseUnits(ch.price, 6)
+        )
       }
       setStep("done")
     } catch (err: any) {
@@ -112,30 +133,64 @@ export default function CreateCourse() {
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           style={{ marginBottom: 64 }}
         >
-          <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.28em", marginBottom: 20, fontWeight: 500 }}>
+          <div style={{
+            fontSize: 10,
+            color: "rgba(13,11,8,0.28)",
+            textTransform: "uppercase",
+            letterSpacing: "0.28em",
+            marginBottom: 20,
+            fontWeight: 500
+          }}>
             {step === "course" ? "Step 1 of 2" : step === "chapters" ? "Step 2 of 2" : "Complete"}
           </div>
-          <h1 style={{ fontSize: "clamp(2.2rem, 5vw, 3.5rem)", fontWeight: 600, color: "#0D0B08", letterSpacing: "-0.025em", lineHeight: 1.05, marginBottom: 16 }}>
+
+          <h1 style={{
+            fontSize: "clamp(2.2rem, 5vw, 3.5rem)",
+            fontWeight: 600,
+            color: "#0D0B08",
+            letterSpacing: "-0.025em",
+            lineHeight: 1.05,
+            marginBottom: 16
+          }}>
             {step === "course" && "Create your course."}
             {step === "chapters" && "Add your lessons."}
             {step === "done" && "Course is live."}
           </h1>
+
           {step !== "done" && (
             <p style={{ color: "rgba(13,11,8,0.38)", fontSize: 14, lineHeight: 1.7, maxWidth: 400 }}>
               {step === "course"
                 ? "Give your course a title and description. Students will see this when browsing."
-                : "Add chapters with IPFS content hashes and set your cUSD price per lesson."}
+                : "Add lessons with text, images, or links. Students get instant access after purchase."}
             </p>
           )}
         </motion.div>
 
-        {/* No wallet */}
+        {/* Wallet */}
         {!address && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             style={{ border: "1px solid rgba(13,11,8,0.1)", padding: 48, textAlign: "center" }}
           >
-            <p style={{ color: "rgba(13,11,8,0.4)", fontSize: 14, marginBottom: 24 }}>Connect your wallet to create a course.</p>
-            <button onClick={connect} style={{ fontSize: 11, background: "#0D0B08", color: "#F2ECE2", padding: "14px 32px", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 500, border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+            <p style={{ color: "rgba(13,11,8,0.4)", fontSize: 14, marginBottom: 24 }}>
+              Connect your wallet to create a course.
+            </p>
+            <button
+              onClick={connect}
+              style={{
+                fontSize: 11,
+                background: "#0D0B08",
+                color: "#F2ECE2",
+                padding: "14px 32px",
+                textTransform: "uppercase",
+                letterSpacing: "0.18em",
+                fontWeight: 500,
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit"
+              }}
+            >
               Connect wallet
             </button>
           </motion.div>
@@ -143,132 +198,138 @@ export default function CreateCourse() {
 
         {/* Step 1 */}
         {address && step === "course" && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div style={{ marginBottom: 40 }}>
               <label style={labelStyle}>Course title</label>
-              <input style={inputStyle} placeholder="e.g. Solidity for Beginners" value={title} onChange={e => setTitle(e.target.value)} />
+              <input
+                style={inputStyle}
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+              />
             </div>
+
             <div style={{ marginBottom: 56 }}>
               <label style={labelStyle}>Description</label>
-              <textarea style={{ ...inputStyle, resize: "none", height: 112 }} placeholder="What will students learn? Who is this for?" value={description} onChange={e => setDescription(e.target.value)} />
+              <textarea
+                style={{ ...inputStyle, height: 120, resize: "none" }}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+              />
             </div>
-            {error && <p style={{ color: "#C4622D", fontSize: 12, marginBottom: 24, letterSpacing: "0.02em" }}>{error}</p>}
+
+            {error && <p style={{ color: "#C4622D", fontSize: 12 }}>{error}</p>}
+
             <button
               onClick={handleCreateCourse}
               disabled={submitting}
-              style={{ width: "100%", fontSize: 11, background: "#0D0B08", color: "#F2ECE2", padding: "18px 32px", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 500, border: "none", cursor: "pointer", fontFamily: "inherit", opacity: submitting ? 0.5 : 1 }}
+              style={{
+                width: "100%",
+                fontSize: 11,
+                background: "#0D0B08",
+                color: "#F2ECE2",
+                padding: "18px 32px",
+                textTransform: "uppercase",
+                letterSpacing: "0.18em",
+                fontWeight: 500,
+                border: "none",
+                cursor: "pointer",
+                opacity: submitting ? 0.5 : 1
+              }}
             >
-              {submitting ? "Creating course..." : "Create course on Celo"}
+              {submitting ? "Creating course..." : "Create course"}
             </button>
           </motion.div>
         )}
 
         {/* Step 2 */}
         {address && step === "chapters" && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <AnimatePresence>
               {chapters.map((ch, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.4 }}
-                  style={{ marginBottom: 48, paddingBottom: 48, borderBottom: i < chapters.length - 1 ? "1px solid rgba(13,11,8,0.08)" : "none" }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
-                    <span style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.22em" }}>Chapter {i + 1}</span>
-                    {chapters.length > 1 && (
-                      <button onClick={() => removeChapterRow(i)} style={{ fontSize: 10, color: "rgba(13,11,8,0.25)", textTransform: "uppercase", letterSpacing: "0.18em", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                        Remove
-                      </button>
+                <motion.div key={i} style={{ marginBottom: 48 }}>
+
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={labelStyle}>Chapter title</label>
+                    <input
+                      style={inputStyle}
+                      value={ch.title}
+                      onChange={e => updateChapter(i, "title", e.target.value)}
+                    />
+                  </div>
+
+                  {/* ✅ REPLACED IPFS WITH CHAPTER EDITOR */}
+                  <div style={{ marginBottom: 32 }}>
+                    <div style={labelStyle}>Lesson content</div>
+
+                    {ch.contentHash ? (
+                      <div style={{ fontSize: 12, color: "#C4622D" }}>
+                        ✓ Content saved
+                        <button
+                          onClick={() => updateChapter(i, "contentHash", "")}
+                          style={{
+                            marginLeft: 12,
+                            fontSize: 10,
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "rgba(13,11,8,0.4)"
+                          }}
+                        >
+                          Replace
+                        </button>
+                      </div>
+                    ) : (
+                      <ChapterEditor
+                        onSave={(hash) => updateChapter(i, "contentHash", hash)}
+                      />
                     )}
                   </div>
-                  <div style={{ marginBottom: 32 }}>
-                    <label style={labelStyle}>Chapter title</label>
-                    <input style={inputStyle} placeholder="e.g. Introduction to Solidity" value={ch.title} onChange={e => updateChapter(i, "title", e.target.value)} />
-                  </div>
-                  <div style={{ marginBottom: 32 }}>
-                    <label style={labelStyle}>IPFS content hash</label>
-                    <div style={{ marginBottom: 32 }}>
-  <label style={labelStyle}>Lesson content</label>
-  <p style={{ fontSize: 11, color: "rgba(13,11,8,0.25)", marginBottom: 16, lineHeight: 1.6 }}>
-    Upload directly to IPFS — no external tools needed.
-  </p>
-  {ch.contentHash ? (
-    <div>
-      <div style={{ fontSize: 10, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 8 }}>
-        Uploaded
-      </div>
-      <div style={{ fontSize: 11, fontFamily: "monospace", color: "rgba(13,11,8,0.4)", wordBreak: "break-all", marginBottom: 8 }}>
-        {ch.contentHash}
-      </div>
-      <button
-        onClick={() => updateChapter(i, "contentHash", "")}
-        style={{ fontSize: 10, color: "rgba(13,11,8,0.3)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.18em" }}
-      >
-        Replace
-      </button>
-    </div>
-  ) : (
-    <IPFSUpload
-      onUpload={(hash) => updateChapter(i, "contentHash", hash)}
-      label={`Chapter ${i + 1} content`}
-    />
-  )}
-</div>
-                    <p style={{ fontSize: 10, color: "rgba(13,11,8,0.22)", marginTop: 8, letterSpacing: "0.02em" }}>Upload your lesson to IPFS first, paste the hash here.</p>
-                  </div>
+
                   <div>
                     <label style={labelStyle}>Price (cUSD)</label>
-                    <input style={inputStyle} placeholder="e.g. 0.50" type="number" min="0.01" step="0.01" value={ch.price} onChange={e => updateChapter(i, "price", e.target.value)} />
+                    <input
+                      style={inputStyle}
+                      value={ch.price}
+                      onChange={e => updateChapter(i, "price", e.target.value)}
+                    />
                   </div>
+
                 </motion.div>
               ))}
             </AnimatePresence>
 
-            <button onClick={addChapterRow} style={{ fontSize: 10, color: "rgba(13,11,8,0.35)", textTransform: "uppercase", letterSpacing: "0.2em", background: "none", border: "none", borderBottom: "1px solid rgba(13,11,8,0.1)", paddingBottom: 2, cursor: "pointer", fontFamily: "inherit", marginBottom: 48, display: "block" }}>
-              + Add another chapter
-            </button>
+            <button onClick={addChapterRow}>+ Add chapter</button>
 
-            {error && <p style={{ color: "#C4622D", fontSize: 12, marginBottom: 24 }}>{error}</p>}
+            {error && <p style={{ color: "#C4622D", fontSize: 12 }}>{error}</p>}
 
             <button
               onClick={handleAddChapters}
               disabled={submitting}
-              style={{ width: "100%", fontSize: 11, background: "#0D0B08", color: "#F2ECE2", padding: "18px 32px", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 500, border: "none", cursor: "pointer", fontFamily: "inherit", opacity: submitting ? 0.5 : 1 }}
+              style={{
+                width: "100%",
+                marginTop: 24,
+                background: "#0D0B08",
+                color: "#F2ECE2",
+                padding: 18,
+                border: "none",
+                cursor: "pointer"
+              }}
             >
-              {submitting ? `Publishing ${chapters.length} lesson${chapters.length > 1 ? "s" : ""}...` : `Publish ${chapters.length} lesson${chapters.length > 1 ? "s" : ""} on Celo`}
+              Publish course
             </button>
           </motion.div>
         )}
 
         {/* Done */}
         {step === "done" && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} style={{ textAlign: "center", paddingTop: 48 }}>
-            <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.28em", marginBottom: 32 }}>
-              Course #{courseId} is live
-            </div>
-            <h2 style={{ fontSize: 32, fontWeight: 600, color: "#0D0B08", marginBottom: 16, letterSpacing: "-0.02em" }}>{title}</h2>
-            <p style={{ color: "rgba(13,11,8,0.38)", fontSize: 14, marginBottom: 56, lineHeight: 1.7 }}>
-              {chapters.length} lesson{chapters.length > 1 ? "s" : ""} published on Celo mainnet.
-            </p>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
-              <button
-                onClick={() => router.push(`/course/${courseId}`)}
-                style={{ fontSize: 11, background: "#0D0B08", color: "#F2ECE2", padding: "14px 32px", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 500, border: "none", cursor: "pointer", fontFamily: "inherit" }}
-              >
-                View course
-              </button>
-              <button
-                onClick={() => { setStep("course"); setTitle(""); setDescription(""); setChapters([{ title: "", contentHash: "", price: "" }]); setCourseId(null) }}
-                style={{ fontSize: 10, color: "rgba(13,11,8,0.38)", textTransform: "uppercase", letterSpacing: "0.18em", background: "none", border: "none", borderBottom: "1px solid rgba(13,11,8,0.1)", paddingBottom: 2, cursor: "pointer", fontFamily: "inherit" }}
-              >
-                Create another
-              </button>
-            </div>
+          <motion.div style={{ textAlign: "center" }}>
+            <h2>Course is live 🎉</h2>
+            <button onClick={() => router.push(`/course/${courseId}`)}>
+              View course
+            </button>
           </motion.div>
         )}
+
       </div>
     </div>
   )

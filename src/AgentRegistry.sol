@@ -40,9 +40,18 @@ contract AgentRegistry {
         emit FeedbackGiven(_agentId, msg.sender, _score, _tag);
     }
 
+<<<<<<< HEAD
     function getReputation(uint256 _agentId) external view returns (int256 total, uint256 count, int256 average) {
         total = totalScore[_agentId];
         count = feedbacks[_agentId].length;
+=======
+    function getReputation(uint256 _agentId) external view returns (
+        int256 total, uint256 count, int256 average
+    ) {
+        require(_agentId < agentCount, "Agent not found"); // <--- SAFETY FIX
+        total   = totalScore[_agentId];
+        count   = feedbacks[_agentId].length;
+>>>>>>> d8edcdfe0cf9a0dd0d1cb45ca1b6689b47ab51f0
         average = count > 0 ? total / int256(count) : int256(0);
     }
 

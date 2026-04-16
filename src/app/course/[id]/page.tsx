@@ -1,98 +1,192 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { ethers } from "ethers"
-import { useParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useMiniPay } from "@/hooks/useMiniPay"
-import { parseError } from "@/lib/parseError"
-import { formatPrice, isLegacyPrice } from "@/lib/formatPrice"
 import { motion } from "framer-motion"
 
 type Chapter = {
   id: number
   title: string
-  price: string
-  purchased: boolean
+  priceUSD6: ethers.BigNumber  // 6 decimals
+  contentHash: string
+  hasAccess: boolean
+  content: string | null
 }
 
-type CourseData = {
+type Course = {
   tutor: string
   title: string
   description: string
   isActive: boolean
   chapterCount: number
-  totalEarned: string
 }
 
-export default function CoursePage() {
-  const { id } = useParams()
-  const router = useRouter()
-  const { address, connect, getEduPay, purchaseChapter, purchaseFullCourse, loading } = useMiniPay()
+function decodeContent(hash: string): React.ReactNode {
+  if (!hash) return null
 
-  const [course, setCourse] = useState<CourseData | null>(null)
-  const [chapters, setChapters] = useState<Chapter[]>([])
-  const [fullPrice, setFullPrice] = useState<string>("0")
-  const [fetching, setFetching] = useState(true)
-  const [buying, setBuying] = useState<number | "full" | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [content, setContent] = useState<Record<number, string>>({})
-
-  const courseId = Number(id)
-
-  async function fetchCourse() {
+  // Multi-block JSON v2
+  if (hash.startsWith("data:application/json;base64,")) {
     try {
-      const eduPay = getEduPay()
+      const json = decodeURIComponent(escape(atob(hash.replace("data:application/json;base64,", ""))))
+      const data = JSON.parse(json) as { title?: string; blocks: Array<{ id: string; type: string; content: string }> }
+      return (
+        <div>
+          {data.title && (
+            <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#0D0B08", marginBottom: 24, lineHeight: 1.15, letterSpacing: "-0.02em" }}>
+              {data.title}
+            </h1>
+          )}
+          {data.blocks?.map((block, i) => {
+            if (block.type === "heading") return <h2 key={i} style={{ fontSize: "1.6rem", fontWeight: 600, color: "#0D0B08", margin: "32px 0 12px", lineHeight: 1.2 }}>{block.content}</h2>
+            if (block.type === "subheading") return <h3 key={i} style={{ fontSize: "1.2rem", fontWeight: 500, color: "#0D0B08", margin: "24px 0 8px" }}>{block.content}</h3>
+            if (block.type === "text") return <p key={i} style={{ fontSize: 16, lineHeight: 1.85, color: "rgba(13,11,8,0.75)", marginBottom: 20, whiteSpace: "pre-wrap", fontWeight: 300 }}>{block.content}</p>
+            if (block.type === "code") return <pre key={i} style={{ background: "rgba(13,11,8,0.04)", border: "1px solid rgba(13,11,8,0.08)", padding: "20px", fontSize: 13, lineHeight: 1.7, overflow: "auto", fontFamily: "monospace", marginBottom: 20 }}><code>{block.content}</code></pre>
+            if (block.type === "image" && block.content) return <figure key={i} style={{ margin: "24px 0" }}><img src={block.content} alt="" style={{ width: "100%", display: "block" }} /></figure>
+            if (block.type === "url" && block.content) return (
+              <div key={i} style={{ margin: "20px 0", padding: "16px 20px", border: "1px solid rgba(13,11,8,0.1)", background: "rgba(13,11,8,0.02)" }}>
+                <div style={{ fontSize: 9, color: "rgba(13,11,8,0.3)", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 8 }}>Resource</div>
+                <a href={block.content} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: "#C4622D", textDecoration: "none", wordBreak: "break-all" }}>{block.content}</a>
+              </div>
+            )
+            return null
+          })}
+        </div>
+      )
+    } catch { return null }
+  }
+
+  if (hash.startsWith("data:text/plain;base64,")) {
+    try {
+      const text = decodeURIComponent(escape(atob(hash.replace("data:text/plain;base64,", ""))))
+      return <p style={{ fontSize: 16, lineHeight: 1.85, color: "rgba(13,11,8,0.75)", whiteSpace: "pre-wrap", fontWeight: 300 }}>{text}</p>
+    } catch { return null }
+  }
+
+  if (hash.startsWith("data:image/")) {
+    return <img src={hash} alt="Lesson" style={{ width: "100%", display: "block" }} />
+  }
+
+  if (hash.startsWith("http")) {
+    return (
+      <div style={{ padding: "24px", border: "1px solid rgba(13,11,8,0.1)", background: "rgba(13,11,8,0.02)" }}>
+        <div style={{ fontSize: 9, color: "rgba(13,11,8,0.3)", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 12 }}>External resource</div>
+        <a href={hash} target="_blank" rel="noopener noreferrer"
+          style={{ fontSize: 13, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.15em", textDecoration: "none", borderBottom: "1px solid rgba(196,98,45,0.3)", paddingBottom: 2 }}
+        >
+          Open content →
+        </a>
+      </div>
+    )
+  }
+
+  if (hash.startsWith("ipfs://")) {
+    const cid = hash.replace("ipfs://", "")
+    return (
+      <a href={`https://gateway.pinata.cloud/ipfs/${cid}`} target="_blank" rel="noopener noreferrer"
+        style={{ fontSize: 13, color: "#C4622D", textDecoration: "none" }}
+      >
+        View on IPFS →
+      </a>
+    )
+  }
+
+  return <p style={{ fontFamily: "monospace", fontSize: 12, color: "rgba(13,11,8,0.3)", wordBreak: "break-all" }}>{hash}</p>
+}
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 10, color: "rgba(13,11,8,0.28)",
+  textTransform: "uppercase", letterSpacing: "0.24em", fontWeight: 500,
+}
+
+const btnPrimary: React.CSSProperties = {
+  fontSize: 10, fontWeight: 500, letterSpacing: "0.2em",
+  textTransform: "uppercase", color: "#F2ECE2",
+  background: "#0D0B08", border: "none",
+  padding: "13px 28px", cursor: "pointer",
+  fontFamily: "inherit", transition: "opacity 0.2s",
+  display: "inline-block", textDecoration: "none",
+}
+
+const btnTerracotta: React.CSSProperties = {
+  fontSize: 10, fontWeight: 500, letterSpacing: "0.2em",
+  textTransform: "uppercase", color: "#F2ECE2",
+  background: "#C4622D", border: "none",
+  padding: "13px 28px", cursor: "pointer",
+  fontFamily: "inherit", transition: "opacity 0.2s",
+}
+
+export default function CoursePage({ params }: { params: { id: string } }) {
+  const courseId = Number(params.id)
+  const { address, loading: walletLoading, connect, purchaseChapter, purchaseFullCourse, getChapterContent, getEduPay } = useMiniPay()
+
+  const [course, setCourse] = useState<Course | null>(null)
+  const [chapters, setChapters] = useState<Chapter[]>([])
+  const [fullPrice6, setFullPrice6] = useState<ethers.BigNumber>(ethers.BigNumber.from(0))
+  const [fetching, setFetching] = useState(true)
+  const [buying, setBuying] = useState<number | null>(null) // chapter id being bought
+  const [buyingFull, setBuyingFull] = useState(false)
+  const [error, setError] = useState("")
+  const [loadingContent, setLoadingContent] = useState<number | null>(null)
+
+  const loadCourse = useCallback(async () => {
+    setFetching(true)
+    try {
+      const eduPay = getEduPay(false)
       const c = await eduPay.courses(courseId)
+      const count = Number(c.chapterCount)
+
       setCourse({
         tutor: c.tutor,
         title: c.title,
         description: c.description,
         isActive: c.isActive,
-        chapterCount: Number(c.chapterCount),
-        totalEarned: c.totalEarned.toString(),
+        chapterCount: count,
       })
 
-      const chList: Chapter[] = []
-      for (let i = 0; i < Number(c.chapterCount); i++) {
-        const ch = await eduPay.getChapter(courseId, i)
-        chList.push({
-          id: i,
-          title: ch.title,
-          price: ch.priceUSD.toString(),
-          purchased: ch.purchased,
-        })
+      const chapterList: Chapter[] = []
+      for (let i = 0; i < count; i++) {
+        try {
+          const [title, priceUSD6] = await eduPay.getChapter(courseId, i)
+          let hasAccess = false
+          if (address) {
+            hasAccess = await eduPay.checkAccess(courseId, i, address)
+          }
+          chapterList.push({ id: i, title, priceUSD6, contentHash: "", hasAccess, content: null })
+        } catch {}
       }
-      setChapters(chList)
+      setChapters(chapterList)
 
       if (address) {
-        const fp = await eduPay.getFullCoursePrice(courseId, address)
-        setFullPrice(fp.toString())
+        try {
+          const remaining = await eduPay.getFullCoursePrice(courseId, address)
+          setFullPrice6(remaining)
+        } catch {}
       }
-    } catch (err) {
-      console.error(err)
+    } catch (err: any) {
+      setError(err.message)
     } finally {
       setFetching(false)
     }
-  }
+  }, [courseId, address])
 
   useEffect(() => {
-    if (loading) return
-    fetchCourse()
-  }, [loading, address])
+    if (!walletLoading) loadCourse()
+  }, [walletLoading, loadCourse])
 
-  async function handleBuyChapter(chapterId: number, price: string) {
+  async function handleBuyChapter(chapter: Chapter) {
     if (!address) { connect(); return }
-    if (isLegacyPrice(price)) {
-      setError("This chapter has an incorrect price set by the tutor and cannot be purchased. The tutor needs to update it.")
-      return
-    }
-    setBuying(chapterId)
-    setError(null)
+    setBuying(chapter.id)
+    setError("")
     try {
-      await purchaseChapter(courseId, chapterId, ethers.BigNumber.from(price))
-      await fetchCourse()
+      // priceUSD6 is 6 decimals; multiply by 1e12 to get 18 decimals for cUSD approval
+      const priceIn18 = chapter.priceUSD6.mul(ethers.BigNumber.from("1000000000000"))
+      await purchaseChapter(courseId, chapter.id, priceIn18)
+      await loadCourse()
     } catch (err: any) {
-      setError(parseError(err))
+      setError(err?.reason || err?.message || "Purchase failed")
     } finally {
       setBuying(null)
     }
@@ -100,46 +194,41 @@ export default function CoursePage() {
 
   async function handleBuyFull() {
     if (!address) { connect(); return }
-    if (chapters.some(ch => isLegacyPrice(ch.price))) {
-      setError("One or more chapters have an incorrect price and cannot be purchased. The tutor needs to update them.")
-      return
-    }
-    setBuying("full")
-    setError(null)
+    setBuyingFull(true)
+    setError("")
     try {
-      await purchaseFullCourse(courseId, ethers.BigNumber.from(fullPrice))
-      await fetchCourse()
+      const priceIn18 = fullPrice6.mul(ethers.BigNumber.from("1000000000000"))
+      await purchaseFullCourse(courseId, priceIn18)
+      await loadCourse()
     } catch (err: any) {
-      setError(parseError(err))
+      setError(err?.reason || err?.message || "Purchase failed")
     } finally {
-      setBuying(null)
+      setBuyingFull(false)
     }
   }
 
-  async function handleReadChapter(chapterId: number) {
+  async function handleLoadContent(chapter: Chapter) {
+    if (!address) { connect(); return }
+    setLoadingContent(chapter.id)
     try {
-      const eduPay = getEduPay()
-      const hash = await eduPay.getChapterContent(courseId, chapterId)
-      setContent(prev => ({ ...prev, [chapterId]: hash }))
+      const hash = await getChapterContent(courseId, chapter.id)
+      setChapters(prev => prev.map(ch =>
+        ch.id === chapter.id ? { ...ch, contentHash: hash } : ch
+      ))
     } catch (err: any) {
-      setError(err?.message ?? "Failed to fetch content.")
+      setError(err?.message || "Could not load content")
+    } finally {
+      setLoadingContent(null)
     }
   }
 
-  const allPurchased = chapters.length > 0 && chapters.every(ch => ch.purchased)
-  const someUnpurchased = chapters.some(ch => !ch.purchased)
+  const allPurchased = chapters.length > 0 && chapters.every(ch => ch.hasAccess)
+  const displayFullPrice = Number(ethers.utils.formatUnits(fullPrice6, 6)).toFixed(2)
 
   if (fetching) {
     return (
-      <div style={{ background: "#F2ECE2", minHeight: "100vh", paddingTop: 120, paddingBottom: 96 }}>
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 64px" }}>
-          {[...Array(3)].map((_, i) => (
-            <div key={i} style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "40px 0" }}>
-              <div style={{ height: 10, background: "rgba(13,11,8,0.05)", borderRadius: 4, width: 56, marginBottom: 20 }} />
-              <div style={{ height: 20, background: "rgba(13,11,8,0.05)", borderRadius: 4, width: 200 }} />
-            </div>
-          ))}
-        </div>
+      <div style={{ background: "#F2ECE2", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ ...labelStyle }}>Loading course...</div>
       </div>
     )
   }
@@ -147,192 +236,196 @@ export default function CoursePage() {
   if (!course) {
     return (
       <div style={{ background: "#F2ECE2", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "rgba(13,11,8,0.3)", fontSize: 14 }}>Course not found.</p>
+        <div>
+          <div style={{ ...labelStyle, marginBottom: 16 }}>Course not found</div>
+          <Link href="/" style={{ ...btnPrimary, textDecoration: "none" }}>← Back to courses</Link>
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ background: "#F2ECE2", minHeight: "100vh", paddingTop: 120, paddingBottom: 96 }}>
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 64px" }}>
+    <div style={{ background: "#F2ECE2", minHeight: "100vh" }}>
 
-        {/* Back */}
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={() => router.push("/")}
-          style={{
-            fontSize: 10, color: "rgba(13,11,8,0.3)", textTransform: "uppercase",
-            letterSpacing: "0.22em", background: "none", border: "none",
-            cursor: "pointer", fontFamily: "inherit", marginBottom: 48, display: "block",
-          }}
-        >
-          Back to courses
-        </motion.button>
-
-        {/* Course header */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          style={{ marginBottom: 64 }}
-        >
-          <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.24em", marginBottom: 16, fontWeight: 500 }}>
-            {course.chapterCount} {course.chapterCount === 1 ? "lesson" : "lessons"}
-          </div>
-          <h1 style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: 600, color: "#0D0B08", letterSpacing: "-0.025em", lineHeight: 1.05, marginBottom: 20 }}>
-            {course.title}
-          </h1>
-          <p style={{ color: "rgba(13,11,8,0.4)", fontSize: 15, lineHeight: 1.7, maxWidth: 480, marginBottom: 24 }}>
-            {course.description}
-          </p>
-          <div style={{ fontSize: 11, color: "rgba(13,11,8,0.28)", fontFamily: "monospace" }}>
-            By {course.tutor.slice(0, 6)}...{course.tutor.slice(-4)}
-          </div>
-        </motion.div>
-
-        {/* Buy full course banner */}
-        {someUnpurchased && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            style={{
-              border: "1px solid rgba(13,11,8,0.1)",
-              padding: "24px 32px",
-              marginBottom: 48,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 24,
-            }}
-          >
-            <div>
-              <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.22em", marginBottom: 6 }}>
-                Full course
+      {/* Course header */}
+      <section style={{ borderBottom: "1px solid rgba(13,11,8,0.08)", padding: "120px 40px 60px" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto" }}>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+            <Link href="/" style={{ ...labelStyle, textDecoration: "none", display: "inline-block", marginBottom: 32 }}>
+              ← All courses
+            </Link>
+            <div style={{ ...labelStyle, color: "#C4622D", marginBottom: 16 }}>
+              {chapters.length} {chapters.length === 1 ? "lesson" : "lessons"}
+            </div>
+            <h1 style={{
+              fontSize: "clamp(2rem, 5vw, 3.5rem)",
+              fontWeight: 700, letterSpacing: "-0.025em",
+              lineHeight: 1.05, color: "#0D0B08", marginBottom: 20,
+            }}>
+              {course.title}
+            </h1>
+            <p style={{ fontSize: 16, fontWeight: 300, color: "rgba(13,11,8,0.5)", lineHeight: 1.8, marginBottom: 32, maxWidth: 600 }}>
+              {course.description}
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 11, fontFamily: "monospace", color: "rgba(13,11,8,0.25)" }}>
+                by {course.tutor.slice(0, 10)}...{course.tutor.slice(-6)}
               </div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#0D0B08" }}>
-                {formatPrice(fullPrice)}
-                <span style={{ fontSize: 12, color: "rgba(13,11,8,0.35)", marginLeft: 6, fontWeight: 400 }}>cUSD</span>
+              {!address && (
+                <button onClick={connect} style={btnPrimary}>Connect to purchase</button>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Buy full course banner */}
+      {address && !allPurchased && fullPrice6.gt(0) && (
+        <div style={{ background: "#0D0B08", padding: "20px 40px" }}>
+          <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "#F2ECE2", marginBottom: 4 }}>
+                Get all lessons for {displayFullPrice} cUSD
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(242,236,226,0.4)", letterSpacing: "0.1em" }}>
+                Best value — instant access to everything
               </div>
             </div>
             <button
               onClick={handleBuyFull}
-              disabled={buying === "full"}
-              style={{
-                fontSize: 11, background: "#0D0B08", color: "#F2ECE2",
-                padding: "14px 28px", textTransform: "uppercase",
-                letterSpacing: "0.16em", fontWeight: 500, border: "none",
-                cursor: "pointer", fontFamily: "inherit",
-                opacity: buying === "full" ? 0.5 : 1,
-              }}
+              disabled={buyingFull}
+              style={{ ...btnTerracotta, opacity: buyingFull ? 0.6 : 1 }}
             >
-              {buying === "full" ? "Processing..." : "Buy all lessons"}
+              {buyingFull ? "Purchasing..." : `Buy all for ${displayFullPrice} cUSD`}
             </button>
-          </motion.div>
-        )}
+          </div>
+        </div>
+      )}
 
-        {error && (
-          <p style={{ color: "#C4622D", fontSize: 12, marginBottom: 24, letterSpacing: "0.02em" }}>{error}</p>
-        )}
+      {/* Error */}
+      {error && (
+        <div style={{ background: "rgba(196,98,45,0.08)", borderBottom: "1px solid rgba(196,98,45,0.2)", padding: "14px 40px" }}>
+          <div style={{ maxWidth: 800, margin: "0 auto", fontSize: 13, color: "#C4622D" }}>
+            {error}
+          </div>
+        </div>
+      )}
 
-        {/* Chapters */}
-        <div>
-          {chapters.map((ch, i) => (
-            <motion.div
-              key={ch.id}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
-              style={{
-                borderTop: "1px solid rgba(13,11,8,0.08)",
-                padding: "32px 0",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 10, color: "rgba(13,11,8,0.25)", textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 10 }}>
-                    Chapter {i + 1}
-                    {ch.purchased && (
-                      <span style={{ marginLeft: 12, color: "#C4622D" }}>Unlocked</span>
+      {/* Chapters */}
+      <section style={{ maxWidth: 800, margin: "0 auto", padding: "60px 40px 120px" }}>
+        <div style={{ ...labelStyle, marginBottom: 40 }}>Course lessons</div>
+
+        {chapters.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 0", borderTop: "1px solid rgba(13,11,8,0.08)" }}>
+            <div style={{ ...labelStyle }}>No lessons added yet</div>
+          </div>
+        ) : (
+          <div>
+            {chapters.map((chapter, i) => (
+              <motion.div
+                key={chapter.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07, duration: 0.6 }}
+                style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "32px 0" }}
+              >
+                {/* Chapter header */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ ...labelStyle, marginBottom: 10 }}>
+                      Lesson {i + 1}
+                      {chapter.hasAccess && (
+                        <span style={{ marginLeft: 12, color: "#C4622D" }}>✓ Unlocked</span>
+                      )}
+                    </div>
+                    <h3 style={{
+                      fontSize: 20, fontWeight: 600, color: "#0D0B08",
+                      lineHeight: 1.25, letterSpacing: "-0.01em",
+                    }}>
+                      {chapter.title}
+                    </h3>
+                  </div>
+
+                  <div style={{ flexShrink: 0, textAlign: "right" }}>
+                    <div style={{ fontSize: 20, fontWeight: 600, color: "#0D0B08", marginBottom: 4, fontVariantNumeric: "tabular-nums" }}>
+                      {Number(ethers.utils.formatUnits(chapter.priceUSD6, 6)).toFixed(2)}
+                      <span style={{ fontSize: 11, color: "rgba(13,11,8,0.3)", marginLeft: 4, fontWeight: 400 }}>cUSD</span>
+                    </div>
+
+                    {chapter.hasAccess ? (
+                      !chapter.contentHash ? (
+                        <button
+                          onClick={() => handleLoadContent(chapter)}
+                          disabled={loadingContent === chapter.id}
+                          style={btnPrimary}
+                        >
+                          {loadingContent === chapter.id ? "Loading..." : "Read lesson"}
+                        </button>
+                      ) : null
+                    ) : (
+                      address ? (
+                        <button
+                          onClick={() => handleBuyChapter(chapter)}
+                          disabled={buying === chapter.id}
+                          style={{ ...btnTerracotta, opacity: buying === chapter.id ? 0.6 : 1 }}
+                        >
+                          {buying === chapter.id ? "Purchasing..." : "Buy lesson"}
+                        </button>
+                      ) : (
+                        <button onClick={connect} style={btnPrimary}>
+                          Connect to buy
+                        </button>
+                      )
                     )}
                   </div>
-                  <h3 style={{ fontSize: 16, fontWeight: 500, color: ch.purchased ? "#0D0B08" : "rgba(13,11,8,0.55)", marginBottom: 8 }}>
-                    {ch.title}
-                  </h3>
-                  <div style={{ fontSize: 13, color: "#C4622D", fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
-                    {formatPrice(ch.price)}
-                    <span style={{ color: "rgba(196,98,45,0.4)", fontSize: 11, marginLeft: 4 }}>cUSD</span>
-                  </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, paddingTop: 4 }}>
-                  {ch.purchased ? (
-                    <>
-                      {content[ch.id] ? (
-                        
-                         <a href={content[ch.id].replace("ipfs://", "https://ipfs.io/ipfs/")}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            fontSize: 10, color: "#C4622D",
-                            textTransform: "uppercase", letterSpacing: "0.18em",
-                            textDecoration: "none", borderBottom: "1px solid rgba(196,98,45,0.3)",
-                            paddingBottom: 1,
-                          }}
-                        >
-                          Open content
-                        </a>
-                      ) : (
-                        <button
-                          onClick={() => handleReadChapter(ch.id)}
-                          style={{
-                            fontSize: 10, color: "rgba(13,11,8,0.4)",
-                            textTransform: "uppercase", letterSpacing: "0.18em",
-                            background: "none", border: "none",
-                            borderBottom: "1px solid rgba(13,11,8,0.12)",
-                            paddingBottom: 1, cursor: "pointer", fontFamily: "inherit",
-                          }}
-                        >
-                          Read lesson
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => handleBuyChapter(ch.id, ch.price)}
-                      disabled={buying === ch.id}
-                      style={{
-                        fontSize: 10, background: "#0D0B08", color: "#F2ECE2",
-                        padding: "10px 20px", textTransform: "uppercase",
-                        letterSpacing: "0.16em", fontWeight: 500,
-                        border: "none", cursor: "pointer", fontFamily: "inherit",
-                        opacity: buying === ch.id ? 0.5 : 1,
-                      }}
-                    >
-                      {buying === ch.id ? "Buying..." : "Buy lesson"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-          <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)" }} />
-        </div>
+                {/* Chapter content (shown after reading) */}
+                {chapter.hasAccess && chapter.contentHash && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                    style={{
+                      marginTop: 32,
+                      padding: "40px",
+                      background: "#FAFAF7",
+                      border: "1px solid rgba(13,11,8,0.07)",
+                    }}
+                  >
+                    {/* Article header */}
+                    <div style={{ borderBottom: "1px solid rgba(13,11,8,0.08)", paddingBottom: 24, marginBottom: 32 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#C4622D", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <span style={{ fontSize: 14, color: "#F2ECE2", fontWeight: 700 }}>E</span>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#0D0B08" }}>EduPay</div>
+                          <div style={{ fontSize: 11, color: "rgba(13,11,8,0.3)" }}>Lesson {i + 1} of {chapters.length}</div>
+                        </div>
+                      </div>
+                    </div>
 
-        {/* All purchased */}
-        {allPurchased && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            style={{ textAlign: "center", paddingTop: 48 }}
-          >
-            <p style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.24em" }}>
-              You own this course
-            </p>
-          </motion.div>
+                    {/* Content */}
+                    <div style={{ maxWidth: 640 }}>
+                      {decodeContent(chapter.contentHash)}
+                    </div>
+
+                    {/* Article footer */}
+                    <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)", marginTop: 48, paddingTop: 24 }}>
+                      <div style={{ ...labelStyle }}>
+                        End of lesson {i + 1} · EduPay on Celo
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            ))}
+
+            <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)" }} />
+          </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }

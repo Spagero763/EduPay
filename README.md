@@ -1,59 +1,61 @@
 # EduPay
 
-> Pay-per-lesson education platform built on Celo and MiniPay.
+> Pay-per-lesson education platform on Celo. Tutors earn cUSD instantly. Students own content forever.
 
-African students pay tutors in cUSD per chapter — no banks, no middlemen, instant stablecoin settlement on Celo.
+**Live:** https://edu-pay-one.vercel.app  
+**Contract:** `0xDBA56f8d23c69Dbd9659be4ca18133962BC86191`  
+**Network:** Celo Mainnet
 
-## Deployed Contract
+---
 
-| Network | Address |
+## For Tutors
+
+### Create a course
+1. Go to **Teach** in the navbar
+2. Fill in title + description → confirm wallet transaction
+3. Add chapters — each with title, content (text/image/links), and cUSD price
+4. Publish — one transaction per chapter
+5. Your course is live immediately
+
+### Content editor
+Each chapter supports mixed content blocks:
+- **Heading** — large section title
+- **Subheading** — smaller section title
+- **Paragraph** — body text (supports line breaks)
+- **Image** — auto-compressed JPG/PNG/WEBP
+- **Link** — YouTube, Google Doc, Notion, or any URL
+- **Code** — monospace code block
+
+---
+
+## For Students
+
+### Buy and read
+1. Connect wallet (MetaMask, Valora, or MiniPay)
+2. Browse courses on the homepage
+3. Click a course → see all chapters with prices
+4. Click **Buy lesson** for individual chapters, or **Buy all** for the full course
+5. After purchase → click **Read lesson** → content opens in a clean reading view
+6. Use Next/Prev to navigate between purchased chapters
+
+### Reading experience
+Content displays in a clean article format — large serif typography, structured headings, images, and resource links. Like reading a Substack post.
+
+---
+
+## Get cUSD
+
+| Source | How |
 |---|---|
-| Celo Mainnet | [`0x8A2D3A806f932616ba07D3Fc42bAb1Bdf6f312a1`](https://celoscan.io/address/0x8a2d3a806f932616ba07d3fc42bab1bdf6f312a1) |
+| MiniPay | Open MiniPay → Add Money |
+| Valora | Buy within the app |
+| Mento | mento.org → swap CELO → cUSD |
 
-## Problem
+---
 
-Educational creators in Nigeria and across Africa cannot easily monetize content. Students have no credit cards, platforms like Gumroad are inaccessible, and paying full course prices upfront is not realistic for most learners.
+## Contracts
 
-## Solution
-
-EduPay lets tutors publish courses with per-chapter cUSD pricing. Students pay only for what they want to learn — one chapter at a time — directly from MiniPay. Tutors get paid instantly onchain with no intermediary.
-
-## How It Works
-```
-Tutor → createCourse() → addChapter(title, ipfsHash, price)
-Student → approve(EduPay, amount) → purchaseChapter(courseId, chapterId)
-Contract → pays tutor instantly (95%) → holds 5% platform fee → unlocks content
-```
-
-## Features
-
-- Pay per chapter or buy full course in one transaction
-- Instant tutor payout in cUSD (Mento stablecoin)
-- Content stored on IPFS — only access gated onchain
-- 5% platform fee (max 10%, owner configurable)
-- MiniPay compatible (mobile-first)
-- Self Protocol integration for tutor humanity verification
-
-
-## Getting Started (Beginners)
-
-New to EduPay? Read the full step-by-step guide: [GUIDE.md](./GUIDE.md)
-
-It covers:
-- Setting up MiniPay or any Celo-compatible wallet
-- Getting test cUSD
-- How tutors create courses and upload content to IPFS
-- How students purchase chapters
-- Common issues and how to fix them
-
-## Contract Architecture
-```
-EduPay.sol
-├── createCourse()         — tutor registers a course
-├── addChapter()           — tutor adds lesson with IPFS hash + cUSD price
-├── purchaseChapter()      — student buys single chapter
-├── purchaseFullCourse()   — student buys all remaining chapters
-├── getChapterContent()    — returns IPFS hash only if student has access
-├── withdrawFees()         — owner collects platform fees
-└── setPlatformFee()       — owner adjusts fee (max 10%)
-```
+| Contract | Address |
+|---|---|
+| EduPay | `0xDBA56f8d23c69Dbd9659be4ca18133962BC86191` |
+| AgentRegistry | `0xBe9Ddf20E2a0191232a5bf57003ea7A512851391` |

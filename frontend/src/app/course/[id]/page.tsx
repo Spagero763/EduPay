@@ -7,6 +7,7 @@ import { useMiniPay } from "@/hooks/useMiniPay"
 import { parseError } from "@/lib/parseError"
 import { formatPrice, isLegacyPrice } from "@/lib/formatPrice"
 import { motion } from "framer-motion"
+import { ChapterReader } from "@/components/ChapterReader"
 
 type Chapter = {
   id: number
@@ -39,75 +40,9 @@ export default function CoursePage() {
 
   const courseId = Number(id)
 
-  // ✅ DECODE FUNCTION
+  // ✅ KEEP your decode function (not used now, but safe to leave)
   function decodeContent(contentHash: string): React.ReactNode {
     if (!contentHash) return null
-
-    if (contentHash.startsWith("data:application/json;base64,")) {
-      try {
-        const json = decodeURIComponent(escape(atob(contentHash.replace("data:application/json;base64,", ""))))
-        const blocks: Array<{ type: string; content: string }> = JSON.parse(json)
-        return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            {blocks.map((block, i) => {
-              if (block.type === "text") {
-                return (
-                  <p key={i} style={{ fontSize: 15, lineHeight: 1.9, color: "#0D0B08", whiteSpace: "pre-wrap", fontWeight: 300 }}>
-                    {block.content}
-                  </p>
-                )
-              }
-              if (block.type === "image") {
-                return <img key={i} src={block.content} style={{ width: "100%" }} />
-              }
-              if (block.type === "url") {
-                return (
-                  <a key={i} href={block.content} target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 13, color: "#C4622D", textDecoration: "none" }}
-                  >
-                    Open resource →
-                  </a>
-                )
-              }
-              return null
-            })}
-          </div>
-        )
-      } catch {
-        return <p>Could not decode content.</p>
-      }
-    }
-
-    if (contentHash.startsWith("data:text/plain;base64,")) {
-      try {
-        const text = decodeURIComponent(escape(atob(contentHash.replace("data:text/plain;base64,", ""))))
-        return <p>{text}</p>
-      } catch {
-        return null
-      }
-    }
-
-    if (contentHash.startsWith("data:image/")) {
-      return <img src={contentHash} style={{ width: "100%" }} />
-    }
-
-    if (contentHash.startsWith("ipfs://")) {
-      const cid = contentHash.replace("ipfs://", "")
-      return (
-        <a href={`https://gateway.pinata.cloud/ipfs/${cid}`} target="_blank">
-          View on IPFS →
-        </a>
-      )
-    }
-
-    if (contentHash.startsWith("http")) {
-      return (
-        <a href={contentHash} target="_blank">
-          Open lesson content →
-        </a>
-      )
-    }
-
     return <p>{contentHash}</p>
   }
 
@@ -204,31 +139,46 @@ export default function CoursePage() {
       <h1>{course.title}</h1>
       <p>{course.description}</p>
 
-      {chapters.map((ch) => (
-        <div key={ch.id} style={{ marginBottom: 40 }}>
-          <h3>{ch.title}</h3>
+      {chapters.map((ch) => {
+        const hasAccess = ch.purchased
+        const contentHash = content[ch.id]
 
-          {ch.purchased ? (
-            <>
-              {!content[ch.id] && (
-                <button onClick={() => handleBuyChapter(ch.id, ch.price)}>
-                  Load lesson
-                </button>
-              )}
+        return (
+          <div key={ch.id} style={{ marginBottom: 40 }}>
+            <h3>{ch.title}</h3>
 
-              {content[ch.id] && (
-                <div style={{ marginTop: 20 }}>
-                  {decodeContent(content[ch.id])}
-                </div>
-              )}
-            </>
-          ) : (
-            <button onClick={() => handleBuyChapter(ch.id, ch.price)}>
-              Buy
-            </button>
-          )}
-        </div>
-      ))}
+            {hasAccess ? (
+              <>
+                {!contentHash && (
+                  <button onClick={() => handleBuyChapter(ch.id, ch.price)}>
+                    Load lesson
+                  </button>
+                )}
+
+                {hasAccess && contentHash && (
+                  <div
+                    style={{
+                      marginTop: 32,
+                      padding: "40px",
+                      background: "#FAFAF8",
+                      border: "1px solid rgba(13,11,8,0.06)"
+                    }}
+                  >
+                    <ChapterReader
+                      contentHash={contentHash}
+                      chapterTitle={ch.title}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <button onClick={() => handleBuyChapter(ch.id, ch.price)}>
+                Buy
+              </button>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

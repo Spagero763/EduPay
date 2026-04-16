@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 import { ethers } from "ethers"
-import { EDUPAY_ADDRESS, USDC_ADDRESS, EDUPAY_ABI, USDC_ABI } from "@/lib/contract"
+import { EDUPAY_ADDRESS, CUSD_ADDRESS, EDUPAY_ABI, CUSD_ABI } from "@/lib/contract"
 import { useAppKit, useAppKitAccount, useAppKitProvider } from "@reown/appkit/react"
+import type { Eip1193Provider } from "ethers"
 
 const PUBLIC_RPC = "https://forno.celo.org"
 
@@ -11,34 +12,28 @@ export function useMiniPay() {
   const { walletProvider } = useAppKitProvider("eip155")
 
   const [isMiniPay, setIsMiniPay] = useState(false)
-  const [provider, setProvider] = useState<ethers.providers.JsonRpcProvider | ethers.providers.Web3Provider | null>(null)
-  const [signer, setSigner] = useState<ethers.Signer | null>(null)
-  const [cusdBalance, setCusdBalance] = useState<string>("0")
+  const [cusdBalance, setCusdBalance] = useState("0")
   const [loading, setLoading] = useState(true)
+  const [signer, setSigner] = useState<ethers.Signer | null>(null)
+  const [publicProvider] = useState(() => new ethers.providers.JsonRpcProvider(PUBLIC_RPC))
 
   useEffect(() => {
-    const publicProvider = new ethers.providers.JsonRpcProvider(PUBLIC_RPC)
-    setProvider(publicProvider)
-    setLoading(false)
-
     const eth = (window as any).ethereum
     if (eth?.isMiniPay) setIsMiniPay(true)
+    setLoading(false)
   }, [])
 
   useEffect(() => {
     if (!walletProvider || !address) return
     async function setup() {
       try {
-        const web3Provider = new ethers.providers.Web3Provider(
-          walletProvider as any
-        )
+        const web3Provider = new ethers.providers.Web3Provider(walletProvider as Eip1193Provider)
         const _signer = web3Provider.getSigner()
         setSigner(_signer)
-        setProvider(web3Provider)
 
-        const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, web3Provider)
-        const bal = await usdc.balanceOf(address)
-        setCusdBalance(ethers.utils.formatUnits(bal, 6))
+        const cusd = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, web3Provider)
+        const bal = await cusd.balanceOf(address)
+        setCusdBalance(ethers.utils.formatEther(bal))
       } catch (err) {
         console.error("wallet setup error:", err)
       }
@@ -46,50 +41,48 @@ export function useMiniPay() {
     setup()
   }, [walletProvider, address])
 
-  function connect() {
-    open()
-  }
+  function connect() { open() }
 
-  function getEduPay(withSigner = false) {
-    const runner = withSigner ? signer : provider
+  function getEduPay(withSigner = false): ethers.Contract {
+    const runner = withSigner ? signer : publicProvider
     if (!runner) throw new Error("No provider")
     return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, runner)
   }
 
-  function getUsdc(withSigner = false) {
-    const runner = withSigner ? signer : provider
+  function getCusd(withSigner = false): ethers.Contract {
+    const runner = withSigner ? signer : publicProvider
     if (!runner) throw new Error("No provider")
-    return new ethers.Contract(USDC_ADDRESS, USDC_ABI, runner)
+    return new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, runner)
   }
 
-  async function approveAndPurchase(amount: ethers.BigNumber, action: () => Promise<any>) {
+  async function ensureApproved(amount: ethers.BigNumber) {
     if (!signer || !address) throw new Error("Not connected")
-    const usdc = getUsdc(true)
-    const allowance = await usdc.allowance(address, EDUPAY_ADDRESS)
+    const cusd = getCusd(true)
+    const allowance: ethers.BigNumber = await cusd.allowance(address, EDUPAY_ADDRESS)
     if (allowance.lt(amount)) {
-      const tx = await usdc.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256)
+      const tx = await cusd.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256)
       await tx.wait()
     }
-    return action()
   }
 
-  async function purchaseChapter(courseId: number, chapterId: number, price: ethers.BigNumber) {
+  async function purchaseChapter(courseId: number, chapterId: number, priceIn18: ethers.BigNumber) {
+    if (!signer) throw new Error("Not connected")
+    await ensureApproved(priceIn18)
     const eduPay = getEduPay(true)
-    return approveAndPurchase(price, async () => {
-      const tx = await eduPay.purchaseChapter(courseId, chapterId, USDC_ADDRESS)
-      return tx.wait()
-    })
+    const tx = await eduPay.purchaseChapter(courseId, chapterId, CUSD_ADDRESS)
+    return tx.wait()
   }
 
-  async function purchaseFullCourse(courseId: number, totalPrice: ethers.BigNumber) {
+  async function purchaseFullCourse(courseId: number, totalIn18: ethers.BigNumber) {
+    if (!signer) throw new Error("Not connected")
+    await ensureApproved(totalIn18)
     const eduPay = getEduPay(true)
-    return approveAndPurchase(totalPrice, async () => {
-      const tx = await eduPay.purchaseFullCourse(courseId, USDC_ADDRESS)
-      return tx.wait()
-    })
+    const tx = await eduPay.purchaseFullCourse(courseId, CUSD_ADDRESS)
+    return tx.wait()
   }
 
   async function createCourse(title: string, description: string): Promise<number> {
+    if (!signer) throw new Error("Not connected")
     const eduPay = getEduPay(true)
     const tx = await eduPay.createCourse(title, description)
     const receipt = await tx.wait()
@@ -103,42 +96,24 @@ export function useMiniPay() {
     throw new Error("CourseCreated event not found")
   }
 
-  async function addChapter(
-    courseId: number,
-    title: string,
-    contentHash: string,
-    price: ethers.BigNumber
-  ) {
+  async function addChapter(courseId: number, title: string, contentHash: string, priceIn6: ethers.BigNumber) {
+    if (!signer) throw new Error("Not connected")
     const eduPay = getEduPay(true)
-    const tx = await eduPay.addChapter(courseId, title, contentHash, price)
+    const tx = await eduPay.addChapter(courseId, title, contentHash, priceIn6)
     return tx.wait()
   }
 
-  async function updateChapter(
-    courseId: number,
-    chapterId: number,
-    price: ethers.BigNumber
-  ) {
+  async function getChapterContent(courseId: number, chapterId: number): Promise<string> {
+    if (!signer) throw new Error("Not connected")
     const eduPay = getEduPay(true)
-    const tx = await eduPay.updateChapter(courseId, chapterId, "", price)
-    return tx.wait()
+    return eduPay.getChapterContent(courseId, chapterId)
   }
 
   return {
-    isMiniPay,
-    address: address ?? null,
-    isConnected,
-    provider,
-    signer,
-    cusdBalance,
-    loading,
-    connect,
-    getEduPay,
-    getUsdc,
-    purchaseChapter,
-    purchaseFullCourse,
-    createCourse,
-    addChapter,
-    updateChapter,
+    isMiniPay, address: address ?? null, isConnected,
+    cusdBalance, loading, connect, signer,
+    getEduPay, getCusd,
+    purchaseChapter, purchaseFullCourse,
+    createCourse, addChapter, getChapterContent,
   }
 }

@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState } from "react"
 
 interface Block {
-  type: "text" | "image" | "url"
+  id: string
+  type: "heading" | "subheading" | "text" | "imageUrl" | "url" | "code"
   content: string
 }
 
@@ -11,130 +12,223 @@ interface ChapterEditorProps {
   onSave: (encoded: string) => void
 }
 
+const MAX_SIZE = 8000 // characters — safe for onchain storage
+
 export function ChapterEditor({ onSave }: ChapterEditorProps) {
-  const [blocks, setBlocks] = useState<Block[]>([{ type: "text", content: "" }])
+  const [chapterTitle, setChapterTitle] = useState("")
+  const [blocks, setBlocks] = useState<Block[]>([
+    { id: "b1", type: "text", content: "" }
+  ])
   const [saved, setSaved] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [warning, setWarning] = useState("")
 
-  const label: React.CSSProperties = {
+  const L: React.CSSProperties = {
     fontSize: 10, color: "rgba(13,11,8,0.3)",
-    textTransform: "uppercase", letterSpacing: "0.22em", fontWeight: 500,
+    textTransform: "uppercase" as const, letterSpacing: "0.22em", fontWeight: 500,
   }
 
-  function addBlock(type: "text" | "image" | "url") {
-    setBlocks(prev => [...prev, { type, content: "" }])
+  const inputBase: React.CSSProperties = {
+    width: "100%", background: "transparent", border: "none",
+    borderBottom: "1px solid rgba(13,11,8,0.1)",
+    padding: "10px 0", color: "#0D0B08",
+    fontFamily: "inherit", outline: "none", lineHeight: 1.6,
+  }
+
+  function newId() { return Date.now().toString() }
+
+  function addBlock(type: Block["type"]) {
+    setBlocks(prev => [...prev, { id: newId(), type, content: "" }])
     setSaved(false)
+    setWarning("")
   }
 
-  function updateBlock(index: number, content: string) {
-    setBlocks(prev => prev.map((b, i) => i === index ? { ...b, content } : b))
+  function updateBlock(id: string, content: string) {
+    setBlocks(prev => prev.map(b => b.id === id ? { ...b, content } : b))
     setSaved(false)
+    setWarning("")
   }
 
-  function removeBlock(index: number) {
-    setBlocks(prev => prev.filter((_, i) => i !== index))
+  function removeBlock(id: string) {
+    if (blocks.length <= 1) return
+    setBlocks(prev => prev.filter(b => b.id !== id))
     setSaved(false)
-  }
-
-  function handleImageUpload(index: number, file: File) {
-    const reader = new FileReader()
-    reader.onload = () => {
-      updateBlock(index, reader.result as string)
-    }
-    reader.readAsDataURL(file)
   }
 
   function handleSave() {
+    if (!chapterTitle.trim()) {
+      setWarning("Please add a chapter title.")
+      return
+    }
     const validBlocks = blocks.filter(b => b.content.trim())
-    if (validBlocks.length === 0) return
-    // Encode all blocks as base64 JSON
-    const json = JSON.stringify(validBlocks)
-    const encoded = btoa(unescape(encodeURIComponent(json)))
-    onSave(`data:application/json;base64,${encoded}`)
-    setSaved(true)
+    if (validBlocks.length === 0) {
+      setWarning("Please add some content to this chapter.")
+      return
+    }
+
+    const payload = {
+      title: chapterTitle.trim(),
+      blocks: validBlocks,
+      v: 2,
+    }
+
+    const json = JSON.stringify(payload)
+    if (json.length > MAX_SIZE) {
+      setWarning(
+        `Content is ${json.length} characters — limit is ${MAX_SIZE}. ` +
+        "Shorten your text or split into multiple chapters."
+      )
+      return
+    }
+
+    try {
+      const b64 = btoa(unescape(encodeURIComponent(json)))
+      onSave(`data:application/json;base64,${b64}`)
+      setSaved(true)
+      setWarning("")
+    } catch {
+      setWarning("Encoding failed. Try reducing content size.")
+    }
   }
 
-  const btnStyle = (active = false): React.CSSProperties => ({
-    fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase",
-    padding: "8px 16px", background: active ? "#0D0B08" : "transparent",
-    border: "1px solid rgba(13,11,8,0.15)", color: active ? "#F2ECE2" : "rgba(13,11,8,0.4)",
-    cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-  })
+  const blockTypes = [
+    { type: "heading" as const, label: "H1" },
+    { type: "subheading" as const, label: "H2" },
+    { type: "text" as const, label: "Paragraph" },
+    { type: "imageUrl" as const, label: "Image URL" },
+    { type: "url" as const, label: "Link" },
+    { type: "code" as const, label: "Code" },
+  ]
 
   return (
-    <div>
-      {/* Blocks */}
+    <div style={{ fontFamily: "inherit" }}>
+
+      {/* Chapter title */}
       <div style={{ marginBottom: 24 }}>
-        {blocks.map((block, i) => (
-          <div key={i} style={{ marginBottom: 20, position: "relative" }}>
-            {/* Remove button */}
-            {blocks.length > 1 && (
-              <button
-                onClick={() => removeBlock(i)}
-                style={{ position: "absolute", top: 0, right: 0, fontSize: 10, color: "rgba(13,11,8,0.25)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
-              >
-                Remove
-              </button>
-            )}
+        <div style={{ ...L, marginBottom: 8 }}>Chapter heading *</div>
+        <input
+          value={chapterTitle}
+          onChange={e => { setChapterTitle(e.target.value); setSaved(false) }}
+          placeholder="e.g. Introduction to Smart Contracts"
+          style={{ ...inputBase, fontSize: 18, fontWeight: 600 }}
+        />
+      </div>
 
-            {block.type === "text" && (
-              <div>
-                <div style={{ ...label, marginBottom: 8 }}>Text block {i + 1}</div>
-                <textarea
-                  value={block.content}
-                  onChange={e => updateBlock(i, e.target.value)}
-                  placeholder="Write your lesson content here..."
-                  rows={6}
-                  style={{ width: "100%", background: "rgba(13,11,8,0.02)", border: "1px solid rgba(13,11,8,0.08)", padding: "14px", fontSize: 14, color: "#0D0B08", fontFamily: "inherit", outline: "none", resize: "vertical", lineHeight: 1.8, marginTop: 0 }}
-                />
+      {/* Content blocks */}
+      <div style={{ marginBottom: 16 }}>
+        {blocks.map((block) => (
+          <div key={block.id} style={{ marginBottom: 20, paddingTop: 16, borderTop: "1px solid rgba(13,11,8,0.06)" }}>
+
+            {/* Block header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ ...L, color: "#C4622D", fontSize: 9 }}>
+                {block.type === "heading" ? "H1 Heading" :
+                  block.type === "subheading" ? "H2 Subheading" :
+                    block.type === "text" ? "Paragraph" :
+                      block.type === "imageUrl" ? "Image (URL)" :
+                        block.type === "url" ? "Link / Resource" : "Code block"}
               </div>
+              {blocks.length > 1 && (
+                <button onClick={() => removeBlock(block.id)}
+                  style={{ fontSize: 9, color: "rgba(13,11,8,0.2)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", letterSpacing: "0.1em" }}>
+                  Remove
+                </button>
+              )}
+            </div>
+
+            {/* Heading */}
+            {block.type === "heading" && (
+              <input
+                value={block.content}
+                onChange={e => updateBlock(block.id, e.target.value)}
+                placeholder="Section heading..."
+                style={{ ...inputBase, fontSize: 20, fontWeight: 700 }}
+              />
             )}
 
-            {block.type === "image" && (
+            {/* Subheading */}
+            {block.type === "subheading" && (
+              <input
+                value={block.content}
+                onChange={e => updateBlock(block.id, e.target.value)}
+                placeholder="Sub-section heading..."
+                style={{ ...inputBase, fontSize: 16, fontWeight: 600 }}
+              />
+            )}
+
+            {/* Text */}
+            {block.type === "text" && (
+              <textarea
+                value={block.content}
+                onChange={e => updateBlock(block.id, e.target.value)}
+                placeholder="Write your lesson content here. You can write multiple paragraphs."
+                rows={6}
+                style={{
+                  ...inputBase,
+                  borderBottom: "none",
+                  border: "1px solid rgba(13,11,8,0.08)",
+                  padding: "12px",
+                  fontSize: 14,
+                  resize: "vertical",
+                  lineHeight: 1.8,
+                }}
+              />
+            )}
+
+            {/* Code */}
+            {block.type === "code" && (
+              <textarea
+                value={block.content}
+                onChange={e => updateBlock(block.id, e.target.value)}
+                placeholder="// Paste your code here..."
+                rows={7}
+                style={{
+                  ...inputBase,
+                  borderBottom: "none",
+                  border: "1px solid rgba(13,11,8,0.08)",
+                  padding: "12px",
+                  fontSize: 13,
+                  fontFamily: "monospace",
+                  resize: "vertical",
+                  lineHeight: 1.7,
+                }}
+              />
+            )}
+
+            {/* Image URL */}
+            {block.type === "imageUrl" && (
               <div>
-                <div style={{ ...label, marginBottom: 8 }}>Image block {i + 1}</div>
-                {block.content ? (
-                  <div>
-                    <img src={block.content} alt="Lesson" style={{ width: "100%", maxHeight: 240, objectFit: "cover", marginBottom: 8 }} />
-                    <button onClick={() => updateBlock(i, "")} style={{ fontSize: 10, color: "rgba(13,11,8,0.3)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.18em" }}>
-                      Replace image
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      ref={fileRef}
-                      style={{ display: "none" }}
-                      onChange={e => {
-                        const file = e.target.files?.[0]
-                        if (file) handleImageUpload(i, file)
-                      }}
-                    />
-                    <button
-                      onClick={() => fileRef.current?.click()}
-                      style={{ width: "100%", padding: "32px", border: "1px dashed rgba(13,11,8,0.15)", background: "transparent", cursor: "pointer", fontFamily: "inherit" }}
-                    >
-                      <div style={{ ...label }}>Click to upload image</div>
-                      <div style={{ fontSize: 11, color: "rgba(13,11,8,0.2)", marginTop: 6 }}>PNG, JPG, GIF, WEBP</div>
-                    </button>
-                  </div>
+                <input
+                  value={block.content}
+                  onChange={e => updateBlock(block.id, e.target.value)}
+                  placeholder="https://i.imgur.com/... or https://example.com/image.jpg"
+                  style={{ ...inputBase, fontSize: 13 }}
+                />
+                <div style={{ fontSize: 10, color: "rgba(13,11,8,0.2)", marginTop: 6, lineHeight: 1.5 }}>
+                  Paste a direct image URL. Upload your image to Imgur, Cloudinary, or Google Photos first,
+                  then paste the direct link here. Do not upload image files directly.
+                </div>
+                {block.content?.startsWith("http") && (
+                  <img
+                    src={block.content}
+                    alt="Preview"
+                    style={{ marginTop: 12, maxWidth: "100%", maxHeight: 180, objectFit: "contain", display: "block" }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+                  />
                 )}
               </div>
             )}
 
+            {/* Link / URL */}
             {block.type === "url" && (
               <div>
-                <div style={{ ...label, marginBottom: 8 }}>Link block {i + 1}</div>
                 <input
                   value={block.content}
-                  onChange={e => updateBlock(i, e.target.value)}
+                  onChange={e => updateBlock(block.id, e.target.value)}
                   placeholder="https://youtube.com/... or https://docs.google.com/..."
-                  style={{ width: "100%", background: "transparent", border: "none", borderBottom: "1px solid rgba(13,11,8,0.15)", padding: "12px 0", fontSize: 13, color: "#0D0B08", fontFamily: "inherit", outline: "none" }}
+                  style={{ ...inputBase, fontSize: 13 }}
                 />
-                <div style={{ fontSize: 11, color: "rgba(13,11,8,0.2)", marginTop: 6 }}>
-                  YouTube, Google Drive, Notion, or any URL
+                <div style={{ fontSize: 10, color: "rgba(13,11,8,0.2)", marginTop: 6 }}>
+                  YouTube, Google Drive, Notion, GitHub Gist, or any URL
                 </div>
               </div>
             )}
@@ -142,35 +236,70 @@ export function ChapterEditor({ onSave }: ChapterEditorProps) {
         ))}
       </div>
 
-      {/* Add block buttons */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-        <div style={{ ...label, display: "flex", alignItems: "center", marginRight: 8 }}>Add:</div>
-        <button onClick={() => addBlock("text")} style={btnStyle()}>+ Text</button>
-        <button onClick={() => addBlock("image")} style={btnStyle()}>+ Image</button>
-        <button onClick={() => addBlock("url")} style={btnStyle()}>+ Link</button>
+      {/* Add block toolbar */}
+      <div style={{
+        display: "flex", flexWrap: "wrap", gap: 8,
+        marginBottom: 20, paddingTop: 16,
+        borderTop: "1px solid rgba(13,11,8,0.06)"
+      }}>
+        <span style={{ ...L, lineHeight: "30px", marginRight: 4 }}>Add block:</span>
+        {blockTypes.map(({ type, label }) => (
+          <button
+            key={type}
+            onClick={() => addBlock(type)}
+            style={{
+              fontSize: 9, fontWeight: 500, letterSpacing: "0.15em",
+              textTransform: "uppercase", padding: "7px 14px",
+              background: "transparent",
+              border: "1px solid rgba(13,11,8,0.12)",
+              color: "rgba(13,11,8,0.45)",
+              cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "#0D0B08"
+              e.currentTarget.style.color = "#F2ECE2"
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "transparent"
+              e.currentTarget.style.color = "rgba(13,11,8,0.45)"
+            }}
+          >
+            + {label}
+          </button>
+        ))}
       </div>
 
-      {/* Save */}
+      {/* Warning */}
+      {warning && (
+        <div style={{
+          marginBottom: 16, padding: "12px 16px",
+          background: "rgba(196,98,45,0.06)",
+          border: "1px solid rgba(196,98,45,0.2)",
+          fontSize: 12, color: "#C4622D", lineHeight: 1.6,
+        }}>
+          {warning}
+        </div>
+      )}
+
+      {/* Save button */}
       <button
         onClick={handleSave}
-        disabled={blocks.every(b => !b.content.trim())}
         style={{
-          width: "100%", fontSize: 10, fontWeight: 500, letterSpacing: "0.18em",
-          textTransform: "uppercase", color: "#F2ECE2",
+          width: "100%", fontSize: 10, fontWeight: 500,
+          letterSpacing: "0.18em", textTransform: "uppercase",
+          color: "#F2ECE2",
           background: saved ? "#C4622D" : "#0D0B08",
-          border: "none", padding: "16px", cursor: "pointer",
-          fontFamily: "inherit", opacity: blocks.every(b => !b.content.trim()) ? 0.4 : 1,
+          border: "none", padding: "16px",
+          cursor: "pointer", fontFamily: "inherit",
           transition: "background 0.3s",
         }}
       >
-        {saved ? "✓ Content saved" : "Save chapter content"}
+        {saved ? "✓ Content saved — ready to publish" : "Save chapter content"}
       </button>
 
-      {saved && (
-        <p style={{ marginTop: 10, fontSize: 11, color: "#C4622D", textAlign: "center" }}>
-          Content ready — will be stored when you publish the chapter.
-        </p>
-      )}
+      <div style={{ marginTop: 8, fontSize: 9, color: "rgba(13,11,8,0.2)", textAlign: "center", letterSpacing: "0.1em" }}>
+        Images must be URLs — no file uploads (blockchain storage limit)
+      </div>
     </div>
   )
 }

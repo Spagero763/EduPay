@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { ethers } from "ethers"
 import {
@@ -14,13 +12,14 @@ import {
   useAppKitProvider,
 } from "@reown/appkit/react"
 
+const PUBLIC_RPC = "https://forno.celo.org"
+
 export function useMiniPay() {
   const { open } = useAppKit()
-  const { address: wcAddress, isConnected: wcConnected } = useAppKitAccount()
+  const { address, isConnected } = useAppKitAccount()
   const { walletProvider } = useAppKitProvider("eip155")
 
   const [isMiniPay, setIsMiniPay] = useState(false)
-  const [miniPayAddress, setMiniPayAddress] = useState<string | null>(null)
   const [cusdBalance, setCusdBalance] = useState("0")
   const [loading, setLoading] = useState(true)
   const [signer, setSigner] = useState<ethers.Signer | null>(null)
@@ -31,7 +30,7 @@ export function useMiniPay() {
 
   // Setup MiniPay
   useEffect(() => {
-    async function detectMiniPay() {
+    async function setup() {
       const eth = (window as any).ethereum
 
       if (eth?.isMiniPay) {
@@ -84,8 +83,8 @@ export function useMiniPay() {
         const bal = await cusd.balanceOf(address)
 
         setCusdBalance(ethers.utils.formatEther(bal))
-      } catch (e) {
-        console.error("WC setup error:", e)
+      } catch (err) {
+        console.error("WalletConnect setup error:", err)
       }
     }
 
@@ -98,13 +97,16 @@ export function useMiniPay() {
     open()
   }
 
-  function getPublicEduPay(): ethers.Contract {
-    return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, publicProvider)
+  function getEduPay(withSigner = false): ethers.Contract {
+    const runner = withSigner ? signer : publicProvider
+    if (!runner) throw new Error("No provider available")
+    return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, runner)
   }
 
-  function getSignedEduPay(): ethers.Contract {
-    if (!signer) throw new Error("Wallet not connected")
-    return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, signer)
+  function getCusd(withSigner = false): ethers.Contract {
+    const runner = withSigner ? signer : publicProvider
+    if (!runner) throw new Error("No provider available")
+    return new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, runner)
   }
 
   async function ensureApproved(amount: ethers.BigNumber) {
@@ -340,9 +342,7 @@ export function useMiniPay() {
         return await signer.getAddress()
       } catch {}
     }
-    const eduPay = getSignedEduPay()
-    const tx = await eduPay.purchaseChapter(courseId, chapterId, CUSD_ADDRESS, { gasLimit: 300000 })
-    return tx.wait()
+    return address ?? null
   }
 
   return {
@@ -353,11 +353,13 @@ export function useMiniPay() {
     loading,
     signer,
     connect,
-    getPublicEduPay,
-    createCourse,
-    addChapter,
+    getEduPay,
+    getCusd,
     purchaseChapter,
     purchaseFullCourse,
+    createCourse,
+    addChapter,
     getChapterContent,
+    getAddress,
   }
 }

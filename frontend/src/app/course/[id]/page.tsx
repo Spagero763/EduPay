@@ -63,8 +63,32 @@ function renderContent(hash: string): React.ReactNode {
               return null
             }
 
+            if (block.type === "heading") {
+              return <h2 key={i} style={{ fontSize: 22, fontWeight: 700, margin: "28px 0 8px" }}>{block.content}</h2>
+            }
+
+            if (block.type === "subheading") {
+              return <h3 key={i} style={{ fontSize: 17, fontWeight: 600, margin: "20px 0 6px" }}>{block.content}</h3>
+            }
+
             if (block.type === "text") {
-              return <p key={i}>{block.content}</p>
+              return <p key={i} style={{ lineHeight: 1.8, margin: "12px 0" }}>{block.content}</p>
+            }
+
+            if (block.type === "code") {
+              return (
+                <pre key={i} style={{ background: "rgba(13,11,8,0.04)", padding: "16px", fontFamily: "monospace", fontSize: 13, overflowX: "auto", margin: "16px 0", lineHeight: 1.7 }}>
+                  <code>{block.content}</code>
+                </pre>
+              )
+            }
+
+            if (block.type === "url") {
+              return (
+                <div key={i} style={{ margin: "12px 0" }}>
+                  <a href={block.content} target="_blank" rel="noopener noreferrer" style={{ color: "#C4622D", fontSize: 14, wordBreak: "break-all" }}>{block.content}</a>
+                </div>
+              )
             }
 
             return null
@@ -94,8 +118,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
   const [course, setCourse] = useState<Course | null>(null)
   const [chapters, setChapters] = useState<Chapter[]>([])
-  const [addingChapter, setAddingChapter] = useState(false) // ✅ Fix 5
-  const [editing, setEditing] = useState(false) // ✅ Fix 4
+  const [addingChapter, setAddingChapter] = useState(false)
 
   const loadData = useCallback(async () => {
     const provider = new ethers.providers.JsonRpcProvider("https://forno.celo.org")
@@ -153,7 +176,6 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
         <div>{course.tutor}</div>
 
-        {/* ✅ Fix 5 button */}
         {address && course && address.toLowerCase() === course.tutor.toLowerCase() && (
           <button
             onClick={() => setAddingChapter(true)}
@@ -173,13 +195,6 @@ export default function CoursePage({ params }: { params: { id: string } }) {
             + Add chapter
           </button>
         )}
-
-        {/* ✅ Fix 4 button */}
-        {address && course && address.toLowerCase() === course.tutor.toLowerCase() && (
-          <button onClick={() => setEditing(true)}>
-            Add chapter
-          </button>
-        )}
       </div>
 
       {/* CHAPTERS */}
@@ -188,25 +203,12 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           <div key={ch.id}>{ch.title}</div>
         ))}
 
-        {/* ✅ Fix 5 panel */}
         {addingChapter && (
           <AddChapterPanel
             courseId={courseId}
             existingCount={chapters.length}
             onDone={() => {
               setAddingChapter(false)
-              loadData()
-            }}
-          />
-        )}
-
-        {/* ✅ Fix 4 panel */}
-        {editing && address && course && address.toLowerCase() === course.tutor.toLowerCase() && (
-          <AddChapterPanel
-            courseId={courseId}
-            existingCount={chapters.length}
-            onDone={() => {
-              setEditing(false)
               loadData()
             }}
           />

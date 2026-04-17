@@ -56,23 +56,26 @@ export default function CreatePage() {
   }
 
   async function handleCreateCourse() {
-    if (!isConnected) { connect(); return }
-    if (!courseTitle.trim()) { setError("Course title is required"); return }
-    if (!courseDescription.trim()) { setError("Course description is required"); return }
-    setError("")
-    setPublishing(true)
-    setPublishStep("Creating course on Celo...")
-    try {
-      const id = await createCourse(courseTitle.trim(), courseDescription.trim())
-      setCourseId(id)
-      setStep("chapters")
-    } catch (err: any) {
-      setError(err?.reason || err?.message || "Failed to create course")
-    } finally {
-      setPublishing(false)
-      setPublishStep("")
-    }
+  if (!isConnected) { connect(); return }
+  if (!courseTitle.trim()) { setError("Course title is required"); return }
+  if (!courseDescription.trim()) { setError("Course description is required"); return }
+  setError("")
+  setPublishing(true)
+  setPublishStep("Creating course on Celo...")
+  try {
+    const id = await createCourse(courseTitle.trim(), courseDescription.trim())
+    setCourseId(id)
+    setPublishStep("Course created! Waiting for blockchain confirmation...")
+    // Wait 3 seconds for RPC to index the transaction
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    setStep("chapters")
+  } catch (err: any) {
+    setError(err?.reason || err?.message || "Failed to create course")
+  } finally {
+    setPublishing(false)
+    setPublishStep("")
   }
+}
 
   async function handlePublishChapters() {
     if (courseId === null) return

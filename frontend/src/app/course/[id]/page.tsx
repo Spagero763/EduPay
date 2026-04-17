@@ -147,45 +147,99 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   const [selectedChapter, setSelectedChapter] = useState<number | null>(null)
 
   const loadData = useCallback(async () => {
-    setFetching(true)
-    try {
-      const eduPay = getEduPay(false)
-      const c = await eduPay.courses(courseId)
-      const count = Number(c.chapterCount)
+  setFetching(true)
+  setError("")
+  try {
+    const provider = new ethers.providers.JsonRpcProvider("https://forno.celo.org")
+    
+    // Use minimal ABI to avoid parsing issues
+    const eduPayABI = [
+      "function courseCount() external view returns (uint256)",
+      "function courses(uint256) external view returns (address tutor, string title, string description, bool isActive, uint256 chapterCount, uint256 totalEarned)",
+      "function getChapter(uint256 _courseId, uint256 _chapterId) external view returns (string memory title, uint256 priceUSD, bool purchased)",
+      "function checkAccess(uint256 _courseId, uint256 _chapterId, address _student) external view returns (bool)",
+      "function getFullCoursePrice(uint256 _courseId, address _student) external view returns (uint256 totalUSD)",
+    ]
+    
+    const eduPay = new ethers.Contract(
+      "0xDBA56f8d23c69Dbd9659be4ca18133962BC86191",
+      eduPayABI,
+      provider
+    )
 
-      setCourse({
-        tutor: c.tutor,
-        title: c.title,
-        description: c.description,
-        isActive: c.isActive,
-        chapterCount: count,
-      })
-
-      const list: Chapter[] = []
-      for (let i = 0; i < count; i++) {
-        try {
-          const [title, priceUSD6] = await eduPay.getChapter(courseId, i)
-          let hasAccess = false
-          if (address) {
-            hasAccess = await eduPay.checkAccess(courseId, i, address)
-          }
-          list.push({ id: i, title, priceUSD6, contentHash: "", hasAccess, content: null })
-        } catch {}
-      }
-      setChapters(list)
-
-      if (address && list.length > 0) {
-        try {
-          const remaining = await eduPay.getFullCoursePrice(courseId, address)
-          setFullPrice6(remaining)
-        } catch {}
-      }
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
+    // Validate course exists
+    const totalCourses = Number(await eduPay.courseCount())
+    if (courseId >= totalCourses) {
+      setCourse(null)
       setFetching(false)
+      return
     }
-  }, [courseId, address])
+
+    const c = await eduPay.courses(courseId)
+    
+    // Validate course is real (not empty/zero address)
+    if (!c || c.tutor === ethers.constants.AddressZero) {
+      setCourse(null)
+      setFetching(false)
+      return
+    }
+
+    const count = Number(c.chapterCount)
+
+    setCourse({
+      tutor: c.tutor,
+      title: c.title,
+      description: c.description,
+      isActive: c.isActive,
+      chapterCount: count,
+    })
+
+    const list: Chapter[] = []
+    for (let i = 0; i < count; i++) {
+      try {
+        const chapterData = await eduPay.getChapter(courseId, i)
+        const title = chapterData[0] || chapterData.title || `Chapter ${i + 1}`
+        const priceUSD6 = chapterData[1] || chapterData.priceUSD || ethers.BigNumber.from(0)
+        
+        let hasAccess = false
+        if (address) {
+          try {
+            hasAccess = await eduPay.checkAccess(courseId, i, address)
+          } catch {}
+        }
+        
+        list.push({
+          id: i,
+          title,
+          priceUSD6: ethers.BigNumber.from(priceUSD6),
+          contentHash: "",
+          hasAccess,
+          content: null,
+        })
+      } catch (chErr) {
+        console.warn(`Chapter ${i} load error:`, chErr)
+      }
+    }
+    setChapters(list)
+
+    if (address && list.length > 0) {
+      try {
+        const remaining = await eduPay.getFullCoursePrice(courseId, address)
+        setFullPrice6(ethers.BigNumber.from(remaining))
+      } catch {}
+    }
+  } catch (err: any) {
+    console.error("loadData error:", err)
+    // Don't show "course not found" for RPC errors
+    if (err?.message?.includes("call revert") || err?.message?.includes("returned no data")) {
+      setCourse(null)
+    } else {
+      setError("Failed to load course. Please refresh.")
+    }
+  } finally {
+    setFetching(false)
+  }
+}, [courseId, address])
 
   useEffect(() => {
     if (!walletLoading) loadData()

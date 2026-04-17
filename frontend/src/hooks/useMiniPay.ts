@@ -82,71 +82,76 @@ export function useMiniPay() {
   }
 
   async function ensureApproved(amount: ethers.BigNumber) {
-    if (!signer) throw new Error("Wallet not connected")
-    const signerAddress = await signer.getAddress()
-    const cusd = getCusd(true)
-    const allowance: ethers.BigNumber = await cusd.allowance(signerAddress, EDUPAY_ADDRESS)
-    if (allowance.lt(amount)) {
-      const tx = await cusd.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256)
-      await tx.wait()
-    }
+  if (!signer) throw new Error("Wallet not connected")
+  const signerAddress = await signer.getAddress()
+  const cusd = getCusd(true)
+  const allowance: ethers.BigNumber = await cusd.allowance(signerAddress, EDUPAY_ADDRESS)
+  if (allowance.lt(amount)) {
+    const tx = await cusd.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256, {
+      gasLimit: 100000,
+    })
+    await tx.wait()
   }
+}
 
-  async function purchaseChapter(
-    courseId: number,
-    chapterId: number,
-    priceIn18: ethers.BigNumber
-  ) {
-    if (!signer) throw new Error("Wallet not connected")
-    await ensureApproved(priceIn18)
-    const eduPay = getEduPay(true)
-    const tx = await eduPay.purchaseChapter(courseId, chapterId, CUSD_ADDRESS)
-    return tx.wait()
-  }
+async function purchaseChapter(courseId: number, chapterId: number, priceIn18: ethers.BigNumber) {
+  if (!signer) throw new Error("Wallet not connected")
+  await ensureApproved(priceIn18)
+  const eduPay = getEduPay(true)
+  const tx = await eduPay.purchaseChapter(courseId, chapterId, CUSD_ADDRESS, {
+    gasLimit: 300000,
+  })
+  return tx.wait()
+}
 
-  async function purchaseFullCourse(
-    courseId: number,
-    priceIn18: ethers.BigNumber
-  ) {
-    if (!signer) throw new Error("Wallet not connected")
-    await ensureApproved(priceIn18)
-    const eduPay = getEduPay(true)
-    const tx = await eduPay.purchaseFullCourse(courseId, CUSD_ADDRESS)
-    return tx.wait()
-  }
+async function purchaseFullCourse(courseId: number, priceIn18: ethers.BigNumber) {
+  if (!signer) throw new Error("Wallet not connected")
+  await ensureApproved(priceIn18)
+  const eduPay = getEduPay(true)
+  const tx = await eduPay.purchaseFullCourse(courseId, CUSD_ADDRESS, {
+    gasLimit: 500000,
+  })
+  return tx.wait()
+}
 
-  async function createCourse(title: string, description: string): Promise<number> {
-    if (!signer) throw new Error("Wallet not connected")
-    const eduPay = getEduPay(true)
-    const tx = await eduPay.createCourse(title, description)
-    const receipt = await tx.wait()
-    const iface = new ethers.utils.Interface(EDUPAY_ABI as any)
-    for (const log of receipt.logs) {
-      try {
-        const parsed = iface.parseLog(log)
-        if (parsed?.name === "CourseCreated") return Number(parsed.args.courseId)
-      } catch {}
-    }
-    throw new Error("CourseCreated event not found")
+async function createCourse(title: string, description: string): Promise<number> {
+  if (!signer) throw new Error("Wallet not connected")
+  const eduPay = getEduPay(true)
+  const tx = await eduPay.createCourse(title, description, {
+    gasLimit: 300000,
+  })
+  const receipt = await tx.wait()
+  const iface = new ethers.utils.Interface(EDUPAY_ABI as any)
+  for (const log of receipt.logs) {
+    try {
+      const parsed = iface.parseLog(log)
+      if (parsed?.name === "CourseCreated") return Number(parsed.args.courseId)
+    } catch {}
   }
+  throw new Error("CourseCreated event not found")
+}
 
-  async function addChapter(
-    courseId: number,
-    title: string,
-    contentHash: string,
-    priceIn6: ethers.BigNumber
-  ) {
-    if (!signer) throw new Error("Wallet not connected")
-    const eduPay = getEduPay(true)
-    const tx = await eduPay.addChapter(courseId, title, contentHash, priceIn6)
-    return tx.wait()
-  }
+async function addChapter(courseId: number, title: string, contentHash: string, priceIn6: ethers.BigNumber) {
+  if (!signer) throw new Error("Wallet not connected")
+  const eduPay = getEduPay(true)
+  const tx = await eduPay.addChapter(courseId, title, contentHash, priceIn6, {
+    gasLimit: 500000,
+  })
+  return tx.wait()
+}
 
   async function getChapterContent(courseId: number, chapterId: number): Promise<string> {
-    if (!signer) throw new Error("Wallet not connected")
-    const eduPay = getEduPay(true)
-    return eduPay.getChapterContent(courseId, chapterId)
+  // Try with signer first (signed call for access-gated content)
+  if (signer) {
+    try {
+      const eduPay = getEduPay(true)
+      return await eduPay.getChapterContent(courseId, chapterId)
+    } catch {}
   }
+  // Fallback to public provider
+  const eduPay = getEduPay(false)
+  return await eduPay.getChapterContent(courseId, chapterId)
+}
 
   // Get connected address — works for both MiniPay and WalletConnect
   async function getAddress(): Promise<string | null> {

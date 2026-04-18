@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ethers } from "ethers"
 import Link from "next/link"
 import { useMiniPay } from "@/hooks/useMiniPay"
 import { formatPrice } from "@/lib/formatPrice"
@@ -83,7 +82,7 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
 }
 
 export default function Home() {
-  const { getEduPay, loading } = useMiniPay()
+  const { getPublicEduPay, loading } = useMiniPay()
   const [courses, setCourses] = useState<Course[]>([])
   const [fetching, setFetching] = useState(true)
 
@@ -96,7 +95,7 @@ export default function Home() {
     if (loading) return
     async function fetchCourses() {
       try {
-        const eduPay = getEduPay()
+        const eduPay = getPublicEduPay()
         const count = await eduPay.courseCount()
         const list: Course[] = []
         for (let i = 0; i < Number(count); i++) {
@@ -361,12 +360,12 @@ export default function Home() {
           <span style={{ color: "rgba(13,11,8,0.3)", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.18em" }}>EduPay</span>
           <span style={{ color: "rgba(13,11,8,0.18)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em" }}>2026</span>
           
-          <a  href="https://celoscan.io/address/0x8A2D3A806f932616ba07D3Fc42bAb1Bdf6f312a1"
+          <a  href="https://celoscan.io/address/0xDBA56f8d23c69Dbd9659be4ca18133962BC86191"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: "rgba(13,11,8,0.22)", fontSize: 10, fontFamily: "monospace", textDecoration: "none" }}
           >
-            0x8A2D...12a1
+            0xDBA5...6191
           </a>
         </div>
       </footer>

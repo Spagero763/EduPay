@@ -128,10 +128,18 @@ export function useMiniPay() {
   }
 
   return {
-    isMiniPay, address, provider, signer,
-    cusdBalance, loading, connect,
-    getEduPay, getCusd,
-    purchaseChapter, purchaseFullCourse,
-    createCourse, addChapter,
-  }
+  isMiniPay,
+  address,
+  isConnected,
+  cusdBalance,
+  loading,
+  signer,
+  connect,
+  getPublicEduPay,
+  createCourse,
+  addChapter,
+  purchaseChapter,
+  purchaseFullCourse,
+  getChapterContent,
+}
 }

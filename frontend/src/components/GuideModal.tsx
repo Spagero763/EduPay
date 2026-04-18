@@ -3,6 +3,7 @@
 import { useState } from "react"
 
 interface GuideModalProps {
+  open: boolean
   onClose: () => void
 }
 
@@ -310,9 +311,11 @@ const sections = [
   },
 ]
 
-export function GuideModal({ onClose }: GuideModalProps) {
+export function GuideModal({ open, onClose }: GuideModalProps) {
   const [active, setActive] = useState("wallet")
   const current = sections.find(s => s.id === active) || sections[0]
+
+  if (!open) return null;
 
   return (
     <div style={{

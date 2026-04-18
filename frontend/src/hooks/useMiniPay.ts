@@ -1,7 +1,16 @@
 import { useState, useEffect } from "react"
 import { ethers } from "ethers"
-import { EDUPAY_ADDRESS, USDC_ADDRESS, EDUPAY_ABI, USDC_ABI } from "@/lib/contract"
-import { useAppKit, useAppKitAccount, useAppKitProvider } from "@reown/appkit/react"
+import {
+  EDUPAY_ADDRESS,
+  CUSD_ADDRESS,
+  EDUPAY_ABI,
+  CUSD_ABI,
+} from "@/lib/contract"
+import {
+  useAppKit,
+  useAppKitAccount,
+  useAppKitProvider,
+} from "@reown/appkit/react"
 
 const PUBLIC_RPC = "https://forno.celo.org"
 
@@ -13,40 +22,77 @@ export function useMiniPay() {
   const [isMiniPay, setIsMiniPay] = useState(false)
   const [provider, setProvider] = useState<ethers.providers.JsonRpcProvider | ethers.providers.Web3Provider | null>(null)
   const [signer, setSigner] = useState<ethers.Signer | null>(null)
-  const [cusdBalance, setCusdBalance] = useState<string>("0")
-  const [loading, setLoading] = useState(true)
 
+  const [publicProvider] = useState(
+    () => new ethers.providers.JsonRpcProvider(PUBLIC_RPC)
+  )
+
+  // Setup MiniPay
   useEffect(() => {
-    const publicProvider = new ethers.providers.JsonRpcProvider(PUBLIC_RPC)
-    setProvider(publicProvider)
-    setLoading(false)
+    async function setup() {
+      const eth = (window as any).ethereum
 
-    const eth = (window as any).ethereum
-    if (eth?.isMiniPay) setIsMiniPay(true)
+      if (eth?.isMiniPay) {
+        setIsMiniPay(true)
+        try {
+          const web3Provider = new ethers.providers.Web3Provider(eth)
+          await web3Provider.send("eth_requestAccounts", [])
+
+          const _signer = web3Provider.getSigner()
+          setSigner(_signer)
+
+          const addr = await _signer.getAddress()
+          const cusd = new ethers.Contract(
+            CUSD_ADDRESS,
+            CUSD_ABI,
+            web3Provider
+          )
+          const bal = await cusd.balanceOf(addr)
+
+          setCusdBalance(ethers.utils.formatEther(bal))
+        } catch (err) {
+          console.error("MiniPay setup error:", err)
+        }
+      }
+
+      setLoading(false)
+    }
+
+    setup()
   }, [])
 
+  // WalletConnect setup
   useEffect(() => {
     if (!walletProvider || !address) return
+
     async function setup() {
       try {
         const web3Provider = new ethers.providers.Web3Provider(
           walletProvider as any
         )
+
         const _signer = web3Provider.getSigner()
         setSigner(_signer)
-        setProvider(web3Provider)
 
-        const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, web3Provider)
-        const bal = await usdc.balanceOf(address)
-        setCusdBalance(ethers.utils.formatUnits(bal, 6))
+        const cusd = new ethers.Contract(
+          CUSD_ADDRESS,
+          CUSD_ABI,
+          web3Provider
+        )
+        const bal = await cusd.balanceOf(address)
+
+        setCusdBalance(ethers.utils.formatEther(bal))
       } catch (err) {
         console.error("wallet setup error:", err)
       }
     }
+
     setup()
   }, [walletProvider, address])
 
   function connect() {
+    const eth = (window as any).ethereum
+    if (eth?.isMiniPay) return
     open()
   }
 
@@ -62,48 +108,237 @@ export function useMiniPay() {
     return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, provider)
   }
 
-  function getUsdc(withSigner = false) {
-    const runner = withSigner ? signer : provider
-    if (!runner) throw new Error("No provider")
-    return new ethers.Contract(USDC_ADDRESS, USDC_ABI, runner)
-  }
+  async function ensureApproved(amount: ethers.BigNumber) {
+    if (!signer) throw new Error("Wallet not connected")
 
-  async function approveAndPurchase(amount: ethers.BigNumber, action: () => Promise<unknown>) {
-    if (!signer || !address) throw new Error("Not connected")
-    const usdc = getUsdc(true)
-    const allowance = await usdc.allowance(address, EDUPAY_ADDRESS)
+    const signerAddress = await signer.getAddress()
+    const cusd = getCusd(true)
+
+    const allowance: ethers.BigNumber = await cusd.allowance(
+      signerAddress,
+      EDUPAY_ADDRESS
+    )
+
     if (allowance.lt(amount)) {
-      const tx = await usdc.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256)
+      const tx = await cusd.approve(
+        EDUPAY_ADDRESS,
+        ethers.constants.MaxUint256,
+        { gasLimit: 100000 }
+      )
       await tx.wait()
     }
-    return action()
   }
 
-  async function purchaseChapter(courseId: number, chapterId: number, price: ethers.BigNumber) {
+  async function purchaseChapter(
+    courseId: number,
+    chapterId: number,
+    priceIn18: ethers.BigNumber
+  ) {
+    if (!signer) throw new Error("Wallet not connected")
+
+    await ensureApproved(priceIn18)
+
     const eduPay = getEduPay(true)
-    return approveAndPurchase(price, async () => {
-      const tx = await eduPay.purchaseChapter(courseId, chapterId, USDC_ADDRESS)
-      return tx.wait()
+    const tx = await eduPay.purchaseChapter(
+      courseId,
+      chapterId,
+      CUSD_ADDRESS,
+      { gasLimit: 300000 }
+    )
+
+    return tx.wait()
+  }
+
+  async function purchaseFullCourse(
+    courseId: number,
+    priceIn18: ethers.BigNumber
+  ) {
+    if (!signer) throw new Error("Wallet not connected")
+
+    await ensureApproved(priceIn18)
+
+    const eduPay = getEduPay(true)
+    const tx = await eduPay.purchaseFullCourse(
+      courseId,
+      CUSD_ADDRESS,
+      { gasLimit: 500000 }
+    )
+
+    return tx.wait()
+  }
+
+  // ✅ FIXED createCourse (MiniPay + fallback)
+  async function createCourse(
+    title: string,
+    description: string
+  ): Promise<number> {
+    if (!signer) throw new Error("Wallet not connected")
+
+    const eth = (window as any).ethereum
+    const isMiniPayEnv = !!eth?.isMiniPay
+
+    if (isMiniPayEnv) {
+      const iface = new ethers.utils.Interface([
+        "function createCourse(string memory _title, string memory _description) external returns (uint256)",
+      ])
+
+      const data = iface.encodeFunctionData("createCourse", [
+        title,
+        description,
+      ])
+
+      const accounts: string[] = await eth.request({
+        method: "eth_requestAccounts",
+      })
+
+      const txHash = await eth.request({
+        method: "eth_sendTransaction",
+        params: [
+          {
+            from: accounts[0],
+            to: EDUPAY_ADDRESS,
+            data,
+            gas: "0x4C4B4",
+            feeCurrency: CUSD_ADDRESS,
+          },
+        ],
+      })
+
+      const miniProvider = new ethers.providers.Web3Provider(eth)
+      const receipt = await miniProvider.waitForTransaction(
+        txHash,
+        1,
+        120000
+      )
+
+      const iface2 = new ethers.utils.Interface(EDUPAY_ABI as any)
+
+      for (const log of receipt.logs) {
+        try {
+          const parsed = iface2.parseLog(log)
+          if (parsed?.name === "CourseCreated") {
+            return Number(parsed.args.courseId)
+          }
+        } catch {}
+      }
+
+      const contract = new ethers.Contract(
+        EDUPAY_ADDRESS,
+        EDUPAY_ABI,
+        publicProvider
+      )
+      const count = await contract.courseCount()
+      return Number(count) - 1
+    }
+
+    const eduPay = getEduPay(true)
+    const tx = await eduPay.createCourse(title, description, {
+      gasLimit: 300000,
     })
-  }
 
-  async function purchaseFullCourse(courseId: number, totalPrice: ethers.BigNumber) {
-    const eduPay = getEduPay(true)
-    return approveAndPurchase(totalPrice, async () => {
-      const tx = await eduPay.purchaseFullCourse(courseId, USDC_ADDRESS)
-      return tx.wait()
-    })
-  }
+    const receipt = await tx.wait()
+    const iface = new ethers.utils.Interface(EDUPAY_ABI as any)
 
-  async function createCourse(title: string, description: string): Promise<number> {
-    const eduPay = getEduPay(true)
-    const tx = await eduPay.createCourse(title, description)
-    const receipt = await tx.wait() as ethers.ContractReceipt
-    const iface = new ethers.utils.Interface(EDUPAY_ABI)
     for (const log of receipt.logs) {
       try {
         const parsed = iface.parseLog(log)
-        if (parsed?.name === "CourseCreated") return Number(parsed.args.courseId)
+        if (parsed?.name === "CourseCreated") {
+          return Number(parsed.args.courseId)
+        }
+      } catch {}
+    }
+
+    const contract = new ethers.Contract(
+      EDUPAY_ADDRESS,
+      EDUPAY_ABI,
+      publicProvider
+    )
+    const count = await contract.courseCount()
+    return Number(count) - 1
+  }
+
+  // ✅ FIXED addChapter (MiniPay supported)
+  async function addChapter(
+    courseId: number,
+    title: string,
+    contentHash: string,
+    priceIn6: ethers.BigNumber
+  ) {
+    if (!signer) throw new Error("Wallet not connected")
+
+    if (contentHash.length > 10000) {
+      throw new Error(
+        "Content is too large. Please shorten your text or use image URLs instead."
+      )
+    }
+
+    const eth = (window as any).ethereum
+    const isMiniPayEnv = !!eth?.isMiniPay
+
+    if (isMiniPayEnv) {
+      const iface = new ethers.utils.Interface([
+        "function addChapter(uint256 _courseId, string memory _title, string memory _contentHash, uint256 _price) external returns (uint256)",
+      ])
+
+      const data = iface.encodeFunctionData("addChapter", [
+        courseId,
+        title,
+        contentHash,
+        priceIn6,
+      ])
+
+      const accounts: string[] = await eth.request({
+        method: "eth_requestAccounts",
+      })
+
+      const txHash = await eth.request({
+        method: "eth_sendTransaction",
+        params: [
+          {
+            from: accounts[0],
+            to: EDUPAY_ADDRESS,
+            data,
+            gas: "0x7A120",
+            feeCurrency: CUSD_ADDRESS,
+          },
+        ],
+      })
+
+      const miniProvider = new ethers.providers.Web3Provider(eth)
+      return miniProvider.waitForTransaction(txHash, 1, 120000)
+    }
+
+    const eduPay = getEduPay(true)
+    const tx = await eduPay.addChapter(
+      courseId,
+      title,
+      contentHash,
+      priceIn6,
+      { gasLimit: 500000 }
+    )
+
+    return tx.wait()
+  }
+
+  async function getChapterContent(
+    courseId: number,
+    chapterId: number
+  ): Promise<string> {
+    if (signer) {
+      try {
+        const eduPay = getEduPay(true)
+        return await eduPay.getChapterContent(courseId, chapterId)
+      } catch {}
+    }
+
+    const eduPay = getEduPay(false)
+    return await eduPay.getChapterContent(courseId, chapterId)
+  }
+
+  async function getAddress(): Promise<string | null> {
+    if (signer) {
+      try {
+        return await signer.getAddress()
       } catch {}
     }
     throw new Error("CourseCreated event not found")
@@ -120,28 +355,10 @@ export function useMiniPay() {
     return tx.wait()
   }
 
-  async function updateChapter(
-    courseId: number,
-    chapterId: number,
-    price: ethers.BigNumber
-  ) {
-    const eduPay = getEduPay(true)
-    const tx = await eduPay.updateChapter(courseId, chapterId, "", price)
-    return tx.wait()
-  }
-
-  async function getChapterContent(courseId: number, chapterId: number): Promise<string> {
-    if (!signer || !address) throw new Error("Not connected")
-    const eduPay = getEduPay(true)
-    return eduPay.getChapterContent(courseId, chapterId)
-  }
-
   return {
     isMiniPay,
     address: address ?? null,
-    isConnected,
-    provider,
-    signer,
+    isConnected: isConnected || isMiniPay,
     cusdBalance,
     loading,
     connect,

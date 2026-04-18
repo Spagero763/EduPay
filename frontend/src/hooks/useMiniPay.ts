@@ -3,10 +3,14 @@
 import { useState, useEffect } from "react"
 import { ethers } from "ethers"
 import {
-  EDUPAY_ADDRESS, CUSD_ADDRESS,
-  EDUPAY_ABI, CUSD_ABI, CELO_RPC,
+  EDUPAY_ADDRESS,
+  CUSD_ADDRESS,
+  EDUPAY_ABI,
+  CUSD_ABI,
 } from "@/lib/contract"
 import { useAppKit, useAppKitAccount, useAppKitProvider } from "@reown/appkit/react"
+
+const CELO_RPC = "https://forno.celo.org"
 
 export function useMiniPay() {
   const { open } = useAppKit()
@@ -21,7 +25,7 @@ export function useMiniPay() {
 
   const publicProvider = new ethers.providers.JsonRpcProvider(CELO_RPC)
 
-  // Detect MiniPay on mount
+  // Detect MiniPay
   useEffect(() => {
     async function detectMiniPay() {
       const eth = (window as any).ethereum
@@ -34,13 +38,12 @@ export function useMiniPay() {
             const web3Provider = new ethers.providers.Web3Provider(eth)
             const _signer = web3Provider.getSigner()
             setSigner(_signer)
-            // Fetch cUSD balance
             const cusd = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, web3Provider)
             const bal = await cusd.balanceOf(accounts[0])
             setCusdBalance(ethers.utils.formatEther(bal))
           }
         } catch (e) {
-          console.error("MiniPay init error:", e)
+          console.warn("MiniPay init:", e)
         }
       }
       setLoading(false)
@@ -48,7 +51,7 @@ export function useMiniPay() {
     detectMiniPay()
   }, [])
 
-  // WalletConnect signer setup
+  // WalletConnect signer
   useEffect(() => {
     if (!walletProvider || !wcAddress) return
     async function setupWC() {
@@ -60,7 +63,7 @@ export function useMiniPay() {
         const bal = await cusd.balanceOf(wcAddress)
         setCusdBalance(ethers.utils.formatEther(bal))
       } catch (e) {
-        console.error("WC setup error:", e)
+        console.warn("WC setup:", e)
       }
     }
     setupWC()
@@ -74,29 +77,38 @@ export function useMiniPay() {
     open()
   }
 
+  // Public read-only contract (no wallet needed)
   function getPublicEduPay(): ethers.Contract {
     return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, publicProvider)
   }
 
+  // Signed contract (wallet needed for writes)
   function getSignedEduPay(): ethers.Contract {
     if (!signer) throw new Error("Wallet not connected")
     return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, signer)
   }
 
-  // Send tx via MiniPay raw method (uses feeCurrency for gasless cUSD)
-  async function miniPaySend(data: string, gasHex = "0x7A120"): Promise<ethers.providers.TransactionReceipt> {
+  // Helper: send tx via MiniPay with feeCurrency (gas paid in cUSD)
+  async function miniPayTx(
+    toAddress: string,
+    data: string,
+    gasHex = "0x7A120"
+  ): Promise<ethers.providers.TransactionReceipt> {
     const eth = (window as any).ethereum
     const accounts: string[] = await eth.request({ method: "eth_requestAccounts" })
+    const from = accounts[0]
+
     const txHash: string = await eth.request({
       method: "eth_sendTransaction",
       params: [{
-        from: accounts[0],
-        to: EDUPAY_ADDRESS,
+        from,
+        to: toAddress,
         data,
         gas: gasHex,
         feeCurrency: CUSD_ADDRESS,
       }]
     })
+
     const provider = new ethers.providers.Web3Provider(eth)
     const receipt = await provider.waitForTransaction(txHash, 1, 120000)
     if (!receipt || receipt.status !== 1) throw new Error("Transaction failed on chain")
@@ -104,7 +116,7 @@ export function useMiniPay() {
   }
 
   async function createCourse(title: string, description: string): Promise<number> {
-    if (!signer && !isMiniPay) throw new Error("Wallet not connected")
+    if (!isConnected) throw new Error("Wallet not connected")
 
     const iface = new ethers.utils.Interface([
       "function createCourse(string memory _title, string memory _description) external returns (uint256)",
@@ -114,30 +126,35 @@ export function useMiniPay() {
     let receipt: ethers.providers.TransactionReceipt
 
     if (isMiniPay) {
-      receipt = await miniPaySend(data, "0x4C4B4") // 313268 gas
+      receipt = await miniPayTx(EDUPAY_ADDRESS, data, "0x4C4B4")
     } else {
+      if (!signer) throw new Error("No signer")
       const eduPay = getSignedEduPay()
       const tx = await eduPay.createCourse(title, description, { gasLimit: 300000 })
       receipt = await tx.wait()
     }
 
-    // Parse CourseCreated event
+    // Parse CourseCreated event to get courseId
     const eventIface = new ethers.utils.Interface(EDUPAY_ABI as any)
     for (const log of receipt.logs) {
       try {
         const parsed = eventIface.parseLog(log)
-        if (parsed?.name === "CourseCreated") {
-          return Number(parsed.args.courseId)
-        }
+        if (parsed?.name === "CourseCreated") return Number(parsed.args.courseId)
       } catch {}
     }
 
-    // Fallback: return courseCount - 1
-    const count = await publicProvider.call({
-      to: EDUPAY_ADDRESS,
-      data: new ethers.utils.Interface(["function courseCount() external view returns (uint256)"]).encodeFunctionData("courseCount"),
-    })
-    return Number(ethers.BigNumber.from(count)) - 1
+    // Fallback: courseCount - 1
+    try {
+      const countData = await publicProvider.call({
+        to: EDUPAY_ADDRESS,
+        data: new ethers.utils.Interface([
+          "function courseCount() external view returns (uint256)"
+        ]).encodeFunctionData("courseCount"),
+      })
+      return Number(ethers.BigNumber.from(countData)) - 1
+    } catch {
+      return 0
+    }
   }
 
   async function addChapter(
@@ -146,12 +163,13 @@ export function useMiniPay() {
     contentHash: string,
     priceIn6: ethers.BigNumber
   ): Promise<ethers.providers.TransactionReceipt> {
-    if (!signer && !isMiniPay) throw new Error("Wallet not connected")
+    if (!isConnected) throw new Error("Wallet not connected")
 
-    // Validate size — contract string storage limit
+    // Strict size limit — blockchain string storage is expensive
     if (contentHash.length > 9000) {
       throw new Error(
-        "Content is too large for blockchain storage. Please reduce text length or use shorter image URLs."
+        "Content is too large. Please shorten your text or use shorter image URLs. " +
+        `Current size: ${contentHash.length} chars, limit: 9000.`
       )
     }
 
@@ -161,9 +179,10 @@ export function useMiniPay() {
     const data = iface.encodeFunctionData("addChapter", [courseId, title, contentHash, priceIn6])
 
     if (isMiniPay) {
-      return miniPaySend(data, "0xF4240") // 1000000 gas
+      return miniPayTx(EDUPAY_ADDRESS, data, "0xF4240") // 1,000,000 gas
     }
 
+    if (!signer) throw new Error("No signer")
     const eduPay = getSignedEduPay()
     const tx = await eduPay.addChapter(courseId, title, contentHash, priceIn6, {
       gasLimit: 800000,
@@ -176,7 +195,7 @@ export function useMiniPay() {
     chapterId: number,
     priceIn18: ethers.BigNumber
   ): Promise<ethers.providers.TransactionReceipt> {
-    if (!signer && !isMiniPay) throw new Error("Wallet not connected")
+    if (!isConnected) throw new Error("Wallet not connected")
 
     if (isMiniPay) {
       const eth = (window as any).ethereum
@@ -184,44 +203,35 @@ export function useMiniPay() {
       const from = accounts[0]
       const miniProvider = new ethers.providers.Web3Provider(eth)
 
-      // Step 1: approve cUSD
-      const cusdIface = new ethers.utils.Interface([
-        "function approve(address spender, uint256 amount) external returns (bool)",
-        "function allowance(address owner, address spender) external view returns (uint256)",
-      ])
-
+      // Check allowance
       const cusdContract = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, miniProvider)
       const allowance: ethers.BigNumber = await cusdContract.allowance(from, EDUPAY_ADDRESS)
-      if (allowance.lt(priceIn18)) {
-        const approveData = cusdIface.encodeFunctionData("approve", [EDUPAY_ADDRESS, ethers.constants.MaxUint256])
-        await miniPaySend(approveData.replace(EDUPAY_ADDRESS.toLowerCase(), CUSD_ADDRESS.toLowerCase()), "0x15F90")
 
-        // Actually send approve to CUSD contract
+      if (allowance.lt(priceIn18)) {
+        // Approve
+        const approveIface = new ethers.utils.Interface([
+          "function approve(address spender, uint256 amount) external returns (bool)",
+        ])
+        const approveData = approveIface.encodeFunctionData("approve", [EDUPAY_ADDRESS, ethers.constants.MaxUint256])
         const approveHash: string = await eth.request({
           method: "eth_sendTransaction",
-          params: [{
-            from,
-            to: CUSD_ADDRESS,
-            data: approveData,
-            gas: "0x15F90",
-            feeCurrency: CUSD_ADDRESS,
-          }]
+          params: [{ from, to: CUSD_ADDRESS, data: approveData, gas: "0x15F90", feeCurrency: CUSD_ADDRESS }],
         })
         await miniProvider.waitForTransaction(approveHash, 1, 60000)
       }
 
-      // Step 2: purchaseChapter
+      // Purchase
       const iface = new ethers.utils.Interface([
         "function purchaseChapter(uint256 _courseId, uint256 _chapterId, address _token) external",
       ])
       const data = iface.encodeFunctionData("purchaseChapter", [courseId, chapterId, CUSD_ADDRESS])
-      return miniPaySend(data, "0x4C4B4")
+      return miniPayTx(EDUPAY_ADDRESS, data, "0x4C4B4")
     }
 
     // MetaMask / WalletConnect
     if (!signer) throw new Error("No signer")
-    const cusd = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, signer)
     const signerAddr = await signer.getAddress()
+    const cusd = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, signer)
     const allowance: ethers.BigNumber = await cusd.allowance(signerAddr, EDUPAY_ADDRESS)
     if (allowance.lt(priceIn18)) {
       const approveTx = await cusd.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256, { gasLimit: 100000 })
@@ -236,7 +246,7 @@ export function useMiniPay() {
     courseId: number,
     priceIn18: ethers.BigNumber
   ): Promise<ethers.providers.TransactionReceipt> {
-    if (!signer && !isMiniPay) throw new Error("Wallet not connected")
+    if (!isConnected) throw new Error("Wallet not connected")
 
     if (isMiniPay) {
       const eth = (window as any).ethereum
@@ -247,10 +257,10 @@ export function useMiniPay() {
       const cusdContract = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, miniProvider)
       const allowance: ethers.BigNumber = await cusdContract.allowance(from, EDUPAY_ADDRESS)
       if (allowance.lt(priceIn18)) {
-        const cusdIface = new ethers.utils.Interface([
+        const approveIface = new ethers.utils.Interface([
           "function approve(address spender, uint256 amount) external returns (bool)",
         ])
-        const approveData = cusdIface.encodeFunctionData("approve", [EDUPAY_ADDRESS, ethers.constants.MaxUint256])
+        const approveData = approveIface.encodeFunctionData("approve", [EDUPAY_ADDRESS, ethers.constants.MaxUint256])
         const approveHash: string = await eth.request({
           method: "eth_sendTransaction",
           params: [{ from, to: CUSD_ADDRESS, data: approveData, gas: "0x15F90", feeCurrency: CUSD_ADDRESS }],
@@ -262,12 +272,12 @@ export function useMiniPay() {
         "function purchaseFullCourse(uint256 _courseId, address _token) external",
       ])
       const data = iface.encodeFunctionData("purchaseFullCourse", [courseId, CUSD_ADDRESS])
-      return miniPaySend(data, "0x7A120")
+      return miniPayTx(EDUPAY_ADDRESS, data, "0x7A120")
     }
 
     if (!signer) throw new Error("No signer")
-    const cusd = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, signer)
     const signerAddr = await signer.getAddress()
+    const cusd = new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, signer)
     const allowance: ethers.BigNumber = await cusd.allowance(signerAddr, EDUPAY_ADDRESS)
     if (allowance.lt(priceIn18)) {
       const approveTx = await cusd.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256, { gasLimit: 100000 })
@@ -279,14 +289,12 @@ export function useMiniPay() {
   }
 
   async function getChapterContent(courseId: number, chapterId: number): Promise<string> {
-    // Try with signer (for signed view calls)
     if (signer) {
       try {
         const eduPay = getSignedEduPay()
         return await eduPay.getChapterContent(courseId, chapterId)
       } catch {}
     }
-    // Fallback public
     const eduPay = getPublicEduPay()
     return await eduPay.getChapterContent(courseId, chapterId)
   }

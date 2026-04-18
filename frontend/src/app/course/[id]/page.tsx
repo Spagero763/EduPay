@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import { ethers } from "ethers"
 import Link from "next/link"
 import { useMiniPay } from "@/hooks/useMiniPay"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 
 type Chapter = {
   id: number
@@ -12,7 +12,6 @@ type Chapter = {
   priceUSD6: ethers.BigNumber
   contentHash: string
   hasAccess: boolean
-  content: string | null
 }
 
 type Course = {
@@ -23,11 +22,10 @@ type Course = {
   chapterCount: number
 }
 
-// Decode onchain content into React elements
 function renderContent(hash: string): React.ReactNode {
   if (!hash) return null
 
-  // JSON blocks v2 (new format)
+  // JSON blocks v2
   if (hash.startsWith("data:application/json;base64,")) {
     try {
       const json = decodeURIComponent(escape(atob(hash.replace("data:application/json;base64,", ""))))
@@ -38,31 +36,34 @@ function renderContent(hash: string): React.ReactNode {
       return (
         <div style={{ fontFamily: "'Georgia', serif" }}>
           {data.title && (
-            <h2 style={{ fontSize: "1.8rem", fontWeight: 700, color: "#0D0B08", marginBottom: 28, lineHeight: 1.2, letterSpacing: "-0.02em", fontFamily: "inherit" }}>
+            <h2 style={{ fontSize: "1.8rem", fontWeight: 700, color: "#0D0B08", marginBottom: 28, lineHeight: 1.2, letterSpacing: "-0.02em" }}>
               {data.title}
             </h2>
           )}
           {data.blocks?.map((block, i) => {
             if (block.type === "heading") {
-              return <h3 key={i} style={{ fontSize: "1.4rem", fontWeight: 700, color: "#0D0B08", margin: "40px 0 16px", lineHeight: 1.2, fontFamily: "inherit" }}>{block.content}</h3>
+              return <h3 key={i} style={{ fontSize: "1.4rem", fontWeight: 700, color: "#0D0B08", margin: "40px 0 16px", lineHeight: 1.2 }}>{block.content}</h3>
             }
             if (block.type === "subheading") {
-              return <h4 key={i} style={{ fontSize: "1.1rem", fontWeight: 600, color: "#0D0B08", margin: "28px 0 12px", fontFamily: "inherit" }}>{block.content}</h4>
+              return <h4 key={i} style={{ fontSize: "1.15rem", fontWeight: 600, color: "#0D0B08", margin: "28px 0 12px" }}>{block.content}</h4>
             }
             if (block.type === "text") {
-              return <p key={i} style={{ fontSize: 17, lineHeight: 1.85, color: "rgba(13,11,8,0.78)", marginBottom: 22, whiteSpace: "pre-wrap", fontWeight: 400, fontFamily: "inherit" }}>{block.content}</p>
+              return <p key={i} style={{ fontSize: 17, lineHeight: 1.85, color: "rgba(13,11,8,0.78)", marginBottom: 22, whiteSpace: "pre-wrap", fontWeight: 400 }}>{block.content}</p>
             }
             if (block.type === "code") {
               return (
-                <pre key={i} style={{ background: "rgba(13,11,8,0.04)", border: "1px solid rgba(13,11,8,0.08)", padding: "20px 24px", fontSize: 13, lineHeight: 1.7, overflow: "auto", fontFamily: "monospace", marginBottom: 24, borderRadius: 0 }}>
+                <pre key={i} style={{ background: "rgba(13,11,8,0.04)", border: "1px solid rgba(13,11,8,0.08)", padding: "20px 24px", fontSize: 13, lineHeight: 1.7, overflow: "auto", fontFamily: "monospace", marginBottom: 24 }}>
                   <code>{block.content}</code>
                 </pre>
               )
             }
-            if (block.type === "image" && block.content) {
+            // imageUrl (new format) or image (legacy URL)
+            if ((block.type === "imageUrl" || block.type === "image") && block.content && block.content.startsWith("http")) {
               return (
                 <figure key={i} style={{ margin: "32px 0" }}>
-                  <img src={block.content} alt="" style={{ width: "100%", display: "block" }} />
+                  <img src={block.content} alt="" style={{ width: "100%", display: "block", maxHeight: 500, objectFit: "contain" }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+                  />
                 </figure>
               )
             }
@@ -82,7 +83,9 @@ function renderContent(hash: string): React.ReactNode {
           })}
         </div>
       )
-    } catch { return <p style={{ color: "rgba(13,11,8,0.4)" }}>Could not render content.</p> }
+    } catch {
+      return <p style={{ color: "rgba(13,11,8,0.4)", fontSize: 14 }}>Could not render content.</p>
+    }
   }
 
   // Legacy plain text
@@ -91,11 +94,6 @@ function renderContent(hash: string): React.ReactNode {
       const text = decodeURIComponent(escape(atob(hash.replace("data:text/plain;base64,", ""))))
       return <p style={{ fontSize: 17, lineHeight: 1.85, color: "rgba(13,11,8,0.75)", whiteSpace: "pre-wrap", fontFamily: "'Georgia', serif" }}>{text}</p>
     } catch { return null }
-  }
-
-  // Image
-  if (hash.startsWith("data:image/")) {
-    return <img src={hash} alt="Lesson content" style={{ width: "100%", display: "block" }} />
   }
 
   // IPFS
@@ -114,8 +112,7 @@ function renderContent(hash: string): React.ReactNode {
     return (
       <div style={{ padding: "20px 24px", border: "1px solid rgba(13,11,8,0.1)", background: "rgba(13,11,8,0.02)" }}>
         <div style={{ fontSize: 9, color: "rgba(13,11,8,0.3)", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 10 }}>External content</div>
-        <a href={hash} target="_blank" rel="noopener noreferrer"
-          style={{ fontSize: 14, color: "#C4622D", textDecoration: "none" }}>
+        <a href={hash} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: "#C4622D", textDecoration: "none" }}>
           Open lesson content →
         </a>
       </div>
@@ -130,12 +127,21 @@ const L: React.CSSProperties = {
   textTransform: "uppercase", letterSpacing: "0.24em", fontWeight: 500,
 }
 
+const CONTRACT = "0xDBA56f8d23c69Dbd9659be4ca18133962BC86191"
+const RPC = "https://forno.celo.org"
+
+const COURSE_ABI = [
+  "function courseCount() external view returns (uint256)",
+  "function courses(uint256) external view returns (address tutor, string title, string description, bool isActive, uint256 chapterCount, uint256 totalEarned)",
+  "function getChapter(uint256 _courseId, uint256 _chapterId) external view returns (string memory title, uint256 priceUSD, bool purchased)",
+  "function checkAccess(uint256 _courseId, uint256 _chapterId, address _student) external view returns (bool)",
+  "function getFullCoursePrice(uint256 _courseId, address _student) external view returns (uint256 totalUSD)",
+  "function getChapterContent(uint256 _courseId, uint256 _chapterId) external view returns (string memory)",
+]
+
 export default function CoursePage({ params }: { params: { id: string } }) {
   const courseId = Number(params.id)
-  const {
-    address, loading: walletLoading, connect, isConnected,
-    purchaseChapter, purchaseFullCourse, getChapterContent, getEduPay
-  } = useMiniPay()
+  const { address, loading: walletLoading, connect, isConnected, purchaseChapter, purchaseFullCourse, getChapterContent } = useMiniPay()
 
   const [course, setCourse] = useState<Course | null>(null)
   const [chapters, setChapters] = useState<Chapter[]>([])
@@ -145,101 +151,92 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   const [error, setError] = useState("")
   const [loadingChapter, setLoadingChapter] = useState<number | null>(null)
   const [selectedChapter, setSelectedChapter] = useState<number | null>(null)
+  const [notFound, setNotFound] = useState(false)
 
   const loadData = useCallback(async () => {
-  setFetching(true)
-  setError("")
-  try {
-    const provider = new ethers.providers.JsonRpcProvider("https://forno.celo.org")
-    
-    // Use minimal ABI to avoid parsing issues
-    const eduPayABI = [
-      "function courseCount() external view returns (uint256)",
-      "function courses(uint256) external view returns (address tutor, string title, string description, bool isActive, uint256 chapterCount, uint256 totalEarned)",
-      "function getChapter(uint256 _courseId, uint256 _chapterId) external view returns (string memory title, uint256 priceUSD, bool purchased)",
-      "function checkAccess(uint256 _courseId, uint256 _chapterId, address _student) external view returns (bool)",
-      "function getFullCoursePrice(uint256 _courseId, address _student) external view returns (uint256 totalUSD)",
-    ]
-    
-    const eduPay = new ethers.Contract(
-      "0xDBA56f8d23c69Dbd9659be4ca18133962BC86191",
-      eduPayABI,
-      provider
-    )
+    setFetching(true)
+    setError("")
+    setNotFound(false)
 
-    // Validate course exists
-    const totalCourses = Number(await eduPay.courseCount())
-    if (courseId >= totalCourses) {
-      setCourse(null)
-      setFetching(false)
-      return
-    }
+    try {
+      const provider = new ethers.providers.JsonRpcProvider(RPC)
+      const eduPay = new ethers.Contract(CONTRACT, COURSE_ABI, provider)
 
-    const c = await eduPay.courses(courseId)
-    
-    // Validate course is real (not empty/zero address)
-    if (!c || c.tutor === ethers.constants.AddressZero) {
-      setCourse(null)
-      setFetching(false)
-      return
-    }
-
-    const count = Number(c.chapterCount)
-
-    setCourse({
-      tutor: c.tutor,
-      title: c.title,
-      description: c.description,
-      isActive: c.isActive,
-      chapterCount: count,
-    })
-
-    const list: Chapter[] = []
-    for (let i = 0; i < count; i++) {
+      // Validate course exists
+      let totalCourses = 0
       try {
-        const chapterData = await eduPay.getChapter(courseId, i)
-        const title = chapterData[0] || chapterData.title || `Chapter ${i + 1}`
-        const priceUSD6 = chapterData[1] || chapterData.priceUSD || ethers.BigNumber.from(0)
-        
-        let hasAccess = false
-        if (address) {
-          try {
-            hasAccess = await eduPay.checkAccess(courseId, i, address)
-          } catch {}
-        }
-        
-        list.push({
-          id: i,
-          title,
-          priceUSD6: ethers.BigNumber.from(priceUSD6),
-          contentHash: "",
-          hasAccess,
-          content: null,
-        })
-      } catch (chErr) {
-        console.warn(`Chapter ${i} load error:`, chErr)
+        totalCourses = Number(await eduPay.courseCount())
+      } catch {
+        setError("Could not connect to Celo network. Please refresh.")
+        setFetching(false)
+        return
       }
-    }
-    setChapters(list)
 
-    if (address && list.length > 0) {
-      try {
-        const remaining = await eduPay.getFullCoursePrice(courseId, address)
-        setFullPrice6(ethers.BigNumber.from(remaining))
-      } catch {}
+      if (isNaN(courseId) || courseId < 0 || courseId >= totalCourses) {
+        setNotFound(true)
+        setFetching(false)
+        return
+      }
+
+      const c = await eduPay.courses(courseId)
+      if (!c || !c.tutor || c.tutor === ethers.constants.AddressZero) {
+        setNotFound(true)
+        setFetching(false)
+        return
+      }
+
+      const count = Number(c.chapterCount)
+      setCourse({
+        tutor: c.tutor,
+        title: c.title || "Untitled Course",
+        description: c.description || "",
+        isActive: c.isActive,
+        chapterCount: count,
+      })
+
+      const list: Chapter[] = []
+      for (let i = 0; i < count; i++) {
+        try {
+          const ch = await eduPay.getChapter(courseId, i)
+          const chTitle = ch[0] || ch.title || `Chapter ${i + 1}`
+          const priceUSD6Raw = ch[1] ?? ch.priceUSD ?? 0
+
+          let hasAccess = false
+          if (address) {
+            try { hasAccess = await eduPay.checkAccess(courseId, i, address) } catch {}
+          }
+
+          list.push({
+            id: i,
+            title: chTitle,
+            priceUSD6: ethers.BigNumber.from(priceUSD6Raw.toString()),
+            contentHash: "",
+            hasAccess,
+          })
+        } catch (chErr) {
+          console.warn(`Chapter ${i}:`, chErr)
+        }
+      }
+      setChapters(list)
+
+      if (address && list.length > 0) {
+        try {
+          const remaining = await eduPay.getFullCoursePrice(courseId, address)
+          setFullPrice6(ethers.BigNumber.from(remaining.toString()))
+        } catch {}
+      }
+    } catch (err: any) {
+      console.error("loadData:", err)
+      const msg = err?.message || ""
+      if (msg.includes("revert") || msg.includes("no data") || msg.includes("invalid")) {
+        setNotFound(true)
+      } else {
+        setError("Failed to load course. Please refresh the page.")
+      }
+    } finally {
+      setFetching(false)
     }
-  } catch (err: any) {
-    console.error("loadData error:", err)
-    // Don't show "course not found" for RPC errors
-    if (err?.message?.includes("call revert") || err?.message?.includes("returned no data")) {
-      setCourse(null)
-    } else {
-      setError("Failed to load course. Please refresh.")
-    }
-  } finally {
-    setFetching(false)
-  }
-}, [courseId, address])
+  }, [courseId, address])
 
   useEffect(() => {
     if (!walletLoading) loadData()
@@ -254,7 +251,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
       await purchaseChapter(courseId, chapter.id, priceIn18)
       await loadData()
     } catch (err: any) {
-      setError(err?.reason || err?.message || "Purchase failed")
+      setError(err?.reason || err?.message || "Purchase failed. Please try again.")
     } finally {
       setBuying(null)
     }
@@ -269,24 +266,21 @@ export default function CoursePage({ params }: { params: { id: string } }) {
       await purchaseFullCourse(courseId, priceIn18)
       await loadData()
     } catch (err: any) {
-      setError(err?.reason || err?.message || "Purchase failed")
+      setError(err?.reason || err?.message || "Purchase failed. Please try again.")
     } finally {
       setBuying(null)
     }
   }
 
   async function openChapter(chapter: Chapter) {
-    if (chapter.contentHash) {
-      setSelectedChapter(chapter.id)
-      return
-    }
+    if (chapter.contentHash) { setSelectedChapter(chapter.id); return }
     setLoadingChapter(chapter.id)
     try {
       const hash = await getChapterContent(courseId, chapter.id)
       setChapters(prev => prev.map(ch => ch.id === chapter.id ? { ...ch, contentHash: hash } : ch))
       setSelectedChapter(chapter.id)
     } catch (err: any) {
-      setError(err?.message || "Could not load content")
+      setError(err?.message || "Could not load lesson content. Please try again.")
     } finally {
       setLoadingChapter(null)
     }
@@ -297,54 +291,60 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   const displayFullPrice = Number(ethers.utils.formatUnits(fullPrice6, 6)).toFixed(2)
   const activeChapter = chapters.find(ch => ch.id === selectedChapter)
 
+  // Loading
   if (fetching) {
     return (
-      <div style={{ background: "#F2ECE2", minHeight: "100vh", paddingTop: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ background: "#F2ECE2", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ ...L }}>Loading course...</div>
       </div>
     )
   }
 
-  if (!course) {
+  // Not found
+  if (notFound || !course) {
     return (
-      <div style={{ background: "#F2ECE2", minHeight: "100vh", paddingTop: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div>
+      <div style={{ background: "#F2ECE2", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
+        <div style={{ textAlign: "center" }}>
           <div style={{ ...L, marginBottom: 20 }}>Course not found</div>
-          <Link href="/" style={{ fontSize: 11, color: "#0D0B08", textTransform: "uppercase", letterSpacing: "0.18em", textDecoration: "none", borderBottom: "1px solid rgba(13,11,8,0.2)", paddingBottom: 2 }}>← Back to courses</Link>
+          <p style={{ fontSize: 14, color: "rgba(13,11,8,0.4)", marginBottom: 32, fontWeight: 300 }}>
+            This course doesn't exist or hasn't loaded yet.
+          </p>
+          <Link href="/" style={{ fontSize: 11, color: "#0D0B08", textTransform: "uppercase", letterSpacing: "0.18em", textDecoration: "none", borderBottom: "1px solid rgba(13,11,8,0.2)", paddingBottom: 2 }}>
+            ← Back to courses
+          </Link>
         </div>
       </div>
     )
   }
 
-  // Reading view — chapter is open
+  // Reading view
   if (selectedChapter !== null && activeChapter) {
     return (
       <div style={{ background: "#F2ECE2", minHeight: "100vh" }}>
-        {/* Reader navbar */}
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "rgba(242,236,226,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(13,11,8,0.08)", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <button onClick={() => setSelectedChapter(null)} style={{ fontSize: 10, color: "rgba(13,11,8,0.4)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.2em" }}>
-            ← Back to course
+        {/* Reader nav */}
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, background: "rgba(242,236,226,0.96)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(13,11,8,0.08)", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <button onClick={() => setSelectedChapter(null)}
+            style={{ fontSize: 10, color: "rgba(13,11,8,0.4)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.2em" }}>
+            ← Back
           </button>
-          <div style={{ ...L }}>
-            Lesson {activeChapter.id + 1} of {chapters.length}
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ ...L }}>Lesson {activeChapter.id + 1} of {chapters.length}</div>
+          <div style={{ display: "flex", gap: 16 }}>
             {activeChapter.id > 0 && chapters[activeChapter.id - 1]?.hasAccess && (
-              <button onClick={() => openChapter(chapters[activeChapter.id - 1])} style={{ fontSize: 10, color: "rgba(13,11,8,0.4)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.18em" }}>
+              <button onClick={() => openChapter(chapters[activeChapter.id - 1])}
+                style={{ fontSize: 10, color: "rgba(13,11,8,0.4)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.18em" }}>
                 ← Prev
               </button>
             )}
             {activeChapter.id < chapters.length - 1 && chapters[activeChapter.id + 1]?.hasAccess && (
-              <button onClick={() => openChapter(chapters[activeChapter.id + 1])} style={{ fontSize: 10, color: "rgba(13,11,8,0.4)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.18em" }}>
+              <button onClick={() => openChapter(chapters[activeChapter.id + 1])}
+                style={{ fontSize: 10, color: "rgba(13,11,8,0.4)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.18em" }}>
                 Next →
               </button>
             )}
           </div>
         </div>
 
-        {/* Reader content */}
-        <article style={{ maxWidth: 680, margin: "0 auto", padding: "100px 24px 120px" }}>
-          {/* Article header */}
+        <article style={{ maxWidth: 680, margin: "0 auto", padding: "90px 24px 120px" }}>
           <header style={{ marginBottom: 48, paddingBottom: 40, borderBottom: "1px solid rgba(13,11,8,0.08)" }}>
             <div style={{ ...L, color: "#C4622D", marginBottom: 16 }}>
               {course.title} · Lesson {activeChapter.id + 1}
@@ -365,34 +365,28 @@ export default function CoursePage({ params }: { params: { id: string } }) {
             </div>
           </header>
 
-          {/* Article body */}
           <div>
             {activeChapter.contentHash ? (
               renderContent(activeChapter.contentHash)
             ) : (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "60px 0" }}>
+              <div style={{ textAlign: "center", padding: "60px 0" }}>
                 <div style={{ ...L }}>Loading content...</div>
               </div>
             )}
           </div>
 
-          {/* Article footer */}
           <footer style={{ marginTop: 80, paddingTop: 32, borderTop: "1px solid rgba(13,11,8,0.08)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-              <div style={{ ...L }}>
-                End of lesson {activeChapter.id + 1} · EduPay on Celo
-              </div>
+              <div style={{ ...L }}>End of lesson {activeChapter.id + 1} · EduPay on Celo</div>
               {activeChapter.id < chapters.length - 1 && (
                 chapters[activeChapter.id + 1]?.hasAccess ? (
                   <button onClick={() => openChapter(chapters[activeChapter.id + 1])}
-                    style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#F2ECE2", background: "#C4622D", border: "none", padding: "12px 24px", cursor: "pointer", fontFamily: "inherit" }}
-                  >
+                    style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#F2ECE2", background: "#C4622D", border: "none", padding: "12px 24px", cursor: "pointer", fontFamily: "inherit" }}>
                     Next lesson →
                   </button>
                 ) : (
                   <button onClick={() => setSelectedChapter(null)}
-                    style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#0D0B08", background: "transparent", border: "1px solid rgba(13,11,8,0.15)", padding: "12px 24px", cursor: "pointer", fontFamily: "inherit" }}
-                  >
+                    style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#0D0B08", background: "transparent", border: "1px solid rgba(13,11,8,0.15)", padding: "12px 24px", cursor: "pointer", fontFamily: "inherit" }}>
                     Purchase next lesson
                   </button>
                 )
@@ -409,12 +403,11 @@ export default function CoursePage({ params }: { params: { id: string } }) {
     <div style={{ background: "#F2ECE2", minHeight: "100vh" }}>
 
       {/* Header */}
-      <section style={{ padding: "120px 24px 60px", borderBottom: "1px solid rgba(13,11,8,0.08)" }}>
+      <section style={{ padding: "100px 24px 56px", borderBottom: "1px solid rgba(13,11,8,0.08)" }}>
         <div style={{ maxWidth: 800, margin: "0 auto" }}>
           <Link href="/" style={{ ...L, textDecoration: "none", display: "inline-block", marginBottom: 32 }}>
             ← All courses
           </Link>
-
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
             <div style={{ ...L, color: "#C4622D", marginBottom: 16 }}>
               {chapters.length} {chapters.length === 1 ? "lesson" : "lessons"}
@@ -422,37 +415,28 @@ export default function CoursePage({ params }: { params: { id: string } }) {
             <h1 style={{ fontSize: "clamp(2rem, 6vw, 3.5rem)", fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.05, color: "#0D0B08", marginBottom: 20, fontFamily: "'Georgia', serif" }}>
               {course.title}
             </h1>
-            <p style={{ fontSize: 16, fontWeight: 300, color: "rgba(13,11,8,0.5)", lineHeight: 1.8, maxWidth: 600, marginBottom: 32 }}>
+            <p style={{ fontSize: 16, fontWeight: 300, color: "rgba(13,11,8,0.5)", lineHeight: 1.8, maxWidth: 600, marginBottom: 28 }}>
               {course.description}
             </p>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(13,11,8,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#0D0B08" }}>T</span>
-              </div>
-              <div style={{ fontSize: 12, color: "rgba(13,11,8,0.3)", fontFamily: "monospace" }}>
-                {course.tutor.slice(0, 12)}...{course.tutor.slice(-6)}
-              </div>
+            <div style={{ fontSize: 11, color: "rgba(13,11,8,0.25)", fontFamily: "monospace" }}>
+              {course.tutor.slice(0, 14)}...{course.tutor.slice(-6)}
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Buy full course banner */}
+      {/* Buy all banner */}
       {address && !allPurchased && fullPrice6.gt(0) && (
-        <div style={{ background: "#0D0B08", padding: "20px 24px" }}>
+        <div style={{ background: "#0D0B08", padding: "18px 24px" }}>
           <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: "#F2ECE2", marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#F2ECE2", marginBottom: 4 }}>
                 Get all {chapters.length} lessons for {displayFullPrice} cUSD
               </div>
-              <div style={{ fontSize: 11, color: "rgba(242,236,226,0.4)", letterSpacing: "0.05em" }}>
-                Best value — full access to every chapter instantly
-              </div>
+              <div style={{ fontSize: 11, color: "rgba(242,236,226,0.4)" }}>Best value — instant access to everything</div>
             </div>
-            <button
-              onClick={handleBuyFull}
-              disabled={buying === "full"}
-              style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.2em", textTransform: "uppercase", color: "#F2ECE2", background: "#C4622D", border: "none", padding: "14px 28px", cursor: buying === "full" ? "default" : "pointer", fontFamily: "inherit", opacity: buying === "full" ? 0.6 : 1, whiteSpace: "nowrap" }}
+            <button onClick={handleBuyFull} disabled={buying === "full"}
+              style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.2em", textTransform: "uppercase", color: "#F2ECE2", background: "#C4622D", border: "none", padding: "13px 28px", cursor: buying === "full" ? "default" : "pointer", fontFamily: "inherit", opacity: buying === "full" ? 0.6 : 1, whiteSpace: "nowrap" }}
             >
               {buying === "full" ? "Purchasing..." : `Buy all — ${displayFullPrice} cUSD`}
             </button>
@@ -462,11 +446,9 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
       {/* Connect prompt */}
       {!address && (
-        <div style={{ background: "rgba(13,11,8,0.04)", borderBottom: "1px solid rgba(13,11,8,0.08)", padding: "16px 24px" }}>
+        <div style={{ background: "rgba(13,11,8,0.04)", borderBottom: "1px solid rgba(13,11,8,0.08)", padding: "14px 24px" }}>
           <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", alignItems: "center", gap: 16 }}>
-            <span style={{ fontSize: 13, color: "rgba(13,11,8,0.45)", fontWeight: 300 }}>
-              Connect your wallet to purchase lessons
-            </span>
+            <span style={{ fontSize: 13, color: "rgba(13,11,8,0.45)", fontWeight: 300 }}>Connect your wallet to purchase lessons</span>
             <button onClick={connect} style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#0D0B08", background: "transparent", border: "1px solid rgba(13,11,8,0.2)", padding: "8px 16px", cursor: "pointer", fontFamily: "inherit" }}>
               Connect wallet
             </button>
@@ -476,14 +458,14 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
       {/* Error */}
       {error && (
-        <div style={{ background: "rgba(196,98,45,0.06)", borderBottom: "1px solid rgba(196,98,45,0.2)", padding: "14px 24px" }}>
+        <div style={{ background: "rgba(196,98,45,0.06)", borderBottom: "1px solid rgba(196,98,45,0.2)", padding: "12px 24px" }}>
           <div style={{ maxWidth: 800, margin: "0 auto", fontSize: 13, color: "#C4622D" }}>{error}</div>
         </div>
       )}
 
-      {/* Chapters list */}
-      <section style={{ maxWidth: 800, margin: "0 auto", padding: "60px 24px 120px" }}>
-        <div style={{ ...L, marginBottom: 40 }}>Course content</div>
+      {/* Chapters */}
+      <section style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px 120px" }}>
+        <div style={{ ...L, marginBottom: 32 }}>Course content</div>
 
         {chapters.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 0", borderTop: "1px solid rgba(13,11,8,0.08)" }}>
@@ -494,31 +476,30 @@ export default function CoursePage({ params }: { params: { id: string } }) {
             {chapters.map((chapter, i) => {
               const price = Number(ethers.utils.formatUnits(chapter.priceUSD6, 6)).toFixed(2)
               const isBuying = buying === chapter.id
-              const isLoading = loadingChapter === chapter.id
+              const isLoadingContent = loadingChapter === chapter.id
 
               return (
-                <motion.div
-                  key={chapter.id}
+                <motion.div key={chapter.id}
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.06, duration: 0.5 }}
-                  style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "28px 0" }}
+                  transition={{ delay: i * 0.05, duration: 0.5 }}
+                  style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "24px 0" }}
                 >
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
-                    {/* Chapter number */}
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+                    {/* Number */}
                     <div style={{ width: 36, height: 36, background: chapter.hasAccess ? "#C4622D" : "rgba(13,11,8,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: chapter.hasAccess ? "#F2ECE2" : "rgba(13,11,8,0.35)" }}>
                         {i + 1}
                       </span>
                     </div>
 
-                    {/* Chapter info */}
+                    {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3 style={{ fontSize: 17, fontWeight: 600, color: "#0D0B08", lineHeight: 1.3, marginBottom: 6, letterSpacing: "-0.01em" }}>
+                      <h3 style={{ fontSize: 16, fontWeight: 600, color: "#0D0B08", lineHeight: 1.3, marginBottom: 4, letterSpacing: "-0.01em" }}>
                         {chapter.title}
                       </h3>
                       {chapter.hasAccess && (
-                        <div style={{ fontSize: 11, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 500 }}>
+                        <div style={{ fontSize: 10, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 500 }}>
                           ✓ Purchased
                         </div>
                       )}
@@ -527,23 +508,17 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                     {/* Action */}
                     <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
                       {chapter.hasAccess ? (
-                        <button
-                          onClick={() => openChapter(chapter)}
-                          disabled={isLoading}
-                          style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#F2ECE2", background: "#0D0B08", border: "none", padding: "10px 20px", cursor: isLoading ? "default" : "pointer", fontFamily: "inherit", opacity: isLoading ? 0.6 : 1 }}
-                        >
-                          {isLoading ? "Loading..." : "Read lesson →"}
+                        <button onClick={() => openChapter(chapter)} disabled={isLoadingContent}
+                          style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#F2ECE2", background: "#0D0B08", border: "none", padding: "10px 20px", cursor: isLoadingContent ? "default" : "pointer", fontFamily: "inherit", opacity: isLoadingContent ? 0.6 : 1 }}>
+                          {isLoadingContent ? "Loading..." : "Read lesson →"}
                         </button>
                       ) : (
                         <>
-                          <div style={{ fontSize: 16, fontWeight: 700, color: "#0D0B08", letterSpacing: "-0.01em" }}>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "#0D0B08" }}>
                             {price} <span style={{ fontSize: 11, fontWeight: 400, color: "rgba(13,11,8,0.35)" }}>cUSD</span>
                           </div>
-                          <button
-                            onClick={() => handleBuyChapter(chapter)}
-                            disabled={isBuying}
-                            style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#F2ECE2", background: isBuying ? "rgba(196,98,45,0.5)" : "#C4622D", border: "none", padding: "10px 20px", cursor: isBuying ? "default" : "pointer", fontFamily: "inherit" }}
-                          >
+                          <button onClick={() => handleBuyChapter(chapter)} disabled={isBuying}
+                            style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "#F2ECE2", background: isBuying ? "rgba(196,98,45,0.5)" : "#C4622D", border: "none", padding: "10px 20px", cursor: isBuying ? "default" : "pointer", fontFamily: "inherit" }}>
                             {isBuying ? "Purchasing..." : "Buy lesson"}
                           </button>
                         </>
@@ -555,14 +530,13 @@ export default function CoursePage({ params }: { params: { id: string } }) {
             })}
             <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)" }} />
 
-            {/* Summary */}
             {anyPurchased && (
-              <div style={{ marginTop: 40, padding: "24px", background: "rgba(196,98,45,0.06)", border: "1px solid rgba(196,98,45,0.15)" }}>
-                <div style={{ ...L, color: "#C4622D", marginBottom: 8 }}>
+              <div style={{ marginTop: 32, padding: "20px 24px", background: "rgba(196,98,45,0.06)", border: "1px solid rgba(196,98,45,0.15)" }}>
+                <div style={{ ...L, color: "#C4622D", marginBottom: 6 }}>
                   {chapters.filter(c => c.hasAccess).length} of {chapters.length} lessons purchased
                 </div>
                 <p style={{ fontSize: 13, color: "rgba(13,11,8,0.5)", fontWeight: 300 }}>
-                  Click "Read lesson" on any purchased chapter to start learning.
+                  Click "Read lesson" to start learning.
                 </p>
               </div>
             )}

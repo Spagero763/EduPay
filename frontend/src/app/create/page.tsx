@@ -215,7 +215,7 @@ export default function CreatePage() {
         )}
 
         {/* Step 2 — Chapters */}
-        {step === "chapters" && (
+        {step === "chapters" && !done && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div style={{ marginBottom: 48 }}>
               <h2 style={{ fontSize: "clamp(1.8rem, 4vw, 2.5rem)", fontWeight: 700, letterSpacing: "-0.025em", color: "#0D0B08", marginBottom: 8 }}>

@@ -8,7 +8,7 @@ African students pay tutors in cUSD per chapter — no banks, no middlemen, inst
 
 | Network | Address |
 |---|---|
-| Celo Mainnet | [`0x8A2D3A806f932616ba07D3Fc42bAb1Bdf6f312a1`](https://celoscan.io/address/0x8a2d3a806f932616ba07d3fc42bab1bdf6f312a1) |
+| Celo Mainnet | [`0xDBA56f8d23c69Dbd9659be4ca18133962BC86191`](https://celoscan.io/address/0xdba56f8d23c69dbd9659be4ca18133962bc86191) |
 
 ## Problem
 

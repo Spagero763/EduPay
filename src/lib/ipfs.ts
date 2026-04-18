@@ -17,7 +17,7 @@ export async function uploadToIPFS(file: File): Promise<string> {
 }
 
 export async function uploadTextToIPFS(content: string, filename: string): Promise<string> {
-  const res = await fetch("/api/ipfs/upload-text", {
+  const res = await fetch("/api/ipfs/upload/upload-text", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content, filename }),

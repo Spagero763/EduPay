@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { ethers } from "ethers"
 import Link from "next/link"
 import { useMiniPay } from "@/hooks/useMiniPay"
+import { CELO_RPC, EDUPAY_ABI, EDUPAY_ADDRESS } from "@/lib/contract"
 import { motion, useInView } from "framer-motion"
 
 type Course = {
@@ -49,16 +50,8 @@ export default function Home() {
 
   async function loadCourses() {
     try {
-      const provider = new ethers.providers.JsonRpcProvider("https://forno.celo.org")
-      const abi = [
-        "function courseCount() external view returns (uint256)",
-        "function courses(uint256) external view returns (address tutor, string memory title, string memory description, bool isActive, uint256 chapterCount, uint256 totalEarned)",
-      ]
-      const eduPay = new ethers.Contract(
-        "0xDBA56f8d23c69Dbd9659be4ca18133962BC86191",
-        abi,
-        provider
-      )
+      const provider = new ethers.providers.JsonRpcProvider(CELO_RPC)
+      const eduPay = new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, provider)
 
       const count = Number(await eduPay.courseCount())
       const list: Course[] = []

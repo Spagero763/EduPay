@@ -20,8 +20,7 @@ export function useMiniPay() {
   const { walletProvider } = useAppKitProvider("eip155")
 
   const [isMiniPay, setIsMiniPay] = useState(false)
-  const [cusdBalance, setCusdBalance] = useState("0")
-  const [loading, setLoading] = useState(true)
+  const [provider, setProvider] = useState<ethers.providers.JsonRpcProvider | ethers.providers.Web3Provider | null>(null)
   const [signer, setSigner] = useState<ethers.Signer | null>(null)
 
   const [publicProvider] = useState(
@@ -84,7 +83,7 @@ export function useMiniPay() {
 
         setCusdBalance(ethers.utils.formatEther(bal))
       } catch (err) {
-        console.error("WalletConnect setup error:", err)
+        console.error("wallet setup error:", err)
       }
     }
 
@@ -97,16 +96,16 @@ export function useMiniPay() {
     open()
   }
 
-  function getEduPay(withSigner = false): ethers.Contract {
-    const runner = withSigner ? signer : publicProvider
-    if (!runner) throw new Error("No provider available")
+  function getEduPay(withSigner = false) {
+    const runner = withSigner ? signer : provider
+    if (!runner) throw new Error("No provider")
     return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, runner)
   }
 
-  function getCusd(withSigner = false): ethers.Contract {
-    const runner = withSigner ? signer : publicProvider
-    if (!runner) throw new Error("No provider available")
-    return new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, runner)
+  // ✅ ADD THIS (this is the only missing piece)
+  function getPublicEduPay() {
+    if (!provider) throw new Error("No provider")
+    return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, provider)
   }
 
   async function ensureApproved(amount: ethers.BigNumber) {
@@ -342,7 +341,18 @@ export function useMiniPay() {
         return await signer.getAddress()
       } catch {}
     }
-    return address ?? null
+    throw new Error("CourseCreated event not found")
+  }
+
+  async function addChapter(
+    courseId: number,
+    title: string,
+    contentHash: string,
+    price: ethers.BigNumber
+  ) {
+    const eduPay = getEduPay(true)
+    const tx = await eduPay.addChapter(courseId, title, contentHash, price)
+    return tx.wait()
   }
 
   return {
@@ -351,15 +361,15 @@ export function useMiniPay() {
     isConnected: isConnected || isMiniPay,
     cusdBalance,
     loading,
-    signer,
     connect,
     getEduPay,
-    getCusd,
+    getPublicEduPay, // ✅ NOW EXISTS
+    getUsdc,
+    getChapterContent,
     purchaseChapter,
     purchaseFullCourse,
     createCourse,
     addChapter,
-    getChapterContent,
-    getAddress,
+    updateChapter,
   }
 }

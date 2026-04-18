@@ -36,3 +36,4 @@ export const USDC_ABI = [
 ] as const
 
 export const CELO_CHAIN_ID = 42220
+export const CELO_RPC = "https://forno.celo.org"

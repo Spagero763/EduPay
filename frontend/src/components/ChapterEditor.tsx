@@ -24,7 +24,7 @@ export function ChapterEditor({ onSave }: ChapterEditorProps) {
 
   const L: React.CSSProperties = {
     fontSize: 10, color: "rgba(13,11,8,0.3)",
-    textTransform: "uppercase", letterSpacing: "0.22em", fontWeight: 500,
+    textTransform: "uppercase" as const, letterSpacing: "0.22em", fontWeight: 500,
   }
 
   function addBlock(type: Block["type"]) {
@@ -43,6 +43,7 @@ export function ChapterEditor({ onSave }: ChapterEditorProps) {
     if (blocks.length <= 1) return
     setBlocks(prev => prev.filter(b => b.id !== id))
     setSaved(false)
+    setWarning("")
   }
 
   function handleSave() {
@@ -129,6 +130,7 @@ export function ChapterEditor({ onSave }: ChapterEditorProps) {
                 placeholder="Subheading..." style={{ ...inputBase, fontSize: 17, fontWeight: 600 }} />
             )}
 
+            {/* Text */}
             {block.type === "text" && (
               <textarea value={block.content} onChange={e => updateBlock(block.id, e.target.value)}
                 placeholder="Write your lesson content here..." rows={6}
@@ -156,6 +158,7 @@ export function ChapterEditor({ onSave }: ChapterEditorProps) {
               </div>
             )}
 
+            {/* Link / URL */}
             {block.type === "url" && (
               <div>
                 <input value={block.content} onChange={e => updateBlock(block.id, e.target.value)}

@@ -56,13 +56,18 @@ export function useMiniPay() {
     return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, runner)
   }
 
+  function getPublicEduPay() {
+    if (!provider) throw new Error("No provider")
+    return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, provider)
+  }
+
   function getUsdc(withSigner = false) {
     const runner = withSigner ? signer : provider
     if (!runner) throw new Error("No provider")
     return new ethers.Contract(USDC_ADDRESS, USDC_ABI, runner)
   }
 
-  async function approveAndPurchase(amount: ethers.BigNumber, action: () => Promise<any>) {
+  async function approveAndPurchase(amount: ethers.BigNumber, action: () => Promise<unknown>) {
     if (!signer || !address) throw new Error("Not connected")
     const usdc = getUsdc(true)
     const allowance = await usdc.allowance(address, EDUPAY_ADDRESS)
@@ -92,8 +97,8 @@ export function useMiniPay() {
   async function createCourse(title: string, description: string): Promise<number> {
     const eduPay = getEduPay(true)
     const tx = await eduPay.createCourse(title, description)
-    const receipt = await tx.wait()
-    const iface = new ethers.utils.Interface(EDUPAY_ABI as any)
+    const receipt = await tx.wait() as ethers.ContractReceipt
+    const iface = new ethers.utils.Interface(EDUPAY_ABI)
     for (const log of receipt.logs) {
       try {
         const parsed = iface.parseLog(log)
@@ -124,6 +129,12 @@ export function useMiniPay() {
     return tx.wait()
   }
 
+  async function getChapterContent(courseId: number, chapterId: number): Promise<string> {
+    if (!signer || !address) throw new Error("Not connected")
+    const eduPay = getEduPay(true)
+    return eduPay.getChapterContent(courseId, chapterId)
+  }
+
   return {
     isMiniPay,
     address: address ?? null,
@@ -134,7 +145,9 @@ export function useMiniPay() {
     loading,
     connect,
     getEduPay,
+    getPublicEduPay,
     getUsdc,
+    getChapterContent,
     purchaseChapter,
     purchaseFullCourse,
     createCourse,

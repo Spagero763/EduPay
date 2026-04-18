@@ -13,7 +13,6 @@ type Chapter = {
   priceUSD6: ethers.BigNumber
   contentHash: string
   hasAccess: boolean
-  content: string | null
 }
 
 type Course = {

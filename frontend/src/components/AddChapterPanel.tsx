@@ -29,8 +29,13 @@ export function AddChapterPanel({ courseId, existingCount, onDone }: Props) {
   async function handlePublish() {
     if (!title.trim()) { setError("Chapter title is required"); return }
     if (!contentEncoded) { setError("Content is required"); return }
-    const priceFloat = parseFloat(price) || 0.5
-    if (priceFloat <= 0) { setError("Price must be greater than 0"); return }
+    if (!Number.isInteger(courseId) || courseId < 0) { setError("Invalid course id"); return }
+
+    const priceFloat = Number(price)
+    if (!Number.isFinite(priceFloat) || priceFloat <= 0) {
+      setError("Enter a valid chapter price")
+      return
+    }
 
     setError("")
     setPublishing(true)

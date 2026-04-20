@@ -5,6 +5,7 @@ import { ethers } from "ethers"
 import { useMiniPay } from "@/hooks/useMiniPay"
 import { AddChapterPanel } from "@/components/AddChapterPanel"
 import { formatPrice, isLegacyPrice } from "@/lib/formatPrice"
+import { parseError } from "@/lib/parseError"
 
 type Chapter = {
   id: number
@@ -180,7 +181,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
 
       setChapters(list)
     } catch (err: any) {
-      setError(err?.reason || err?.message || "Failed to load course")
+      setError(parseError(err))
     }
   }, [address, courseId, getPublicEduPay, isValidCourseId])
 
@@ -231,7 +232,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       await purchaseChapter(courseId, chapter.id, chapter.priceUSD6)
       await loadData()
     } catch (err: any) {
-      setError(err?.reason || err?.message || "Failed to purchase chapter")
+      setError(parseError(err))
     } finally {
       setPurchasingChapterId(null)
     }
@@ -259,7 +260,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       await purchaseFullCourse(courseId, remainingTotal6)
       await loadData()
     } catch (err: any) {
-      setError(err?.reason || err?.message || "Failed to purchase full course")
+      setError(parseError(err))
     } finally {
       setBuyingFullCourse(false)
     }
@@ -276,7 +277,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       const content = await getChapterContent(courseId, chapter.id)
       setSelectedContent(content)
     } catch (err: any) {
-      setError(err?.reason || err?.message || "Could not load chapter content")
+      setError(parseError(err))
     } finally {
       setLoadingContentId(null)
     }

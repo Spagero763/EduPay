@@ -5,6 +5,7 @@ import { ethers } from "ethers"
 import { useMiniPay } from "@/hooks/useMiniPay"
 import { ChapterEditor } from "@/components/ChapterEditor"
 import { motion } from "framer-motion"
+import { parseError } from "@/lib/parseError"
 
 interface Props {
   courseId: number
@@ -48,7 +49,7 @@ export function AddChapterPanel({ courseId, existingCount, onDone }: Props) {
         onDone()
       }, 2000)
     } catch (err: any) {
-      setError(err?.reason || err?.message || "Failed to publish chapter")
+      setError(parseError(err))
     } finally {
       setPublishing(false)
     }

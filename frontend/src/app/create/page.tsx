@@ -264,7 +264,7 @@ export default function CreatePage() {
                 </div>
 
                 <div>
-                  <label style={{ ...label, display: "block", marginBottom: 10 }}>Price (cUSD) *</label>
+                  <label style={{ ...label, display: "block", marginBottom: 10 }}>Price (USDC) *</label>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ fontSize: 18, color: "rgba(13,11,8,0.3)", fontWeight: 300 }}>$</span>
                     <input
@@ -276,7 +276,7 @@ export default function CreatePage() {
                       placeholder="0.50"
                       style={{ ...inputStyle, fontSize: 18, fontWeight: 600, width: 120 }}
                     />
-                    <span style={{ fontSize: 13, color: "rgba(13,11,8,0.3)", fontWeight: 300 }}>cUSD per lesson</span>
+                    <span style={{ fontSize: 13, color: "rgba(13,11,8,0.3)", fontWeight: 300 }}>USDC per lesson</span>
                   </div>
                 </div>
               </div>

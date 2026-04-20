@@ -228,8 +228,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     setPurchasingChapterId(chapter.id)
 
     try {
-      const priceIn18 = chapter.priceUSD6.mul("1000000000000")
-      await purchaseChapter(courseId, chapter.id, priceIn18)
+      await purchaseChapter(courseId, chapter.id, chapter.priceUSD6)
       await loadData()
     } catch (err: any) {
       setError(err?.reason || err?.message || "Failed to purchase chapter")
@@ -257,8 +256,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     setBuyingFullCourse(true)
 
     try {
-      const total18 = remainingTotal6.mul("1000000000000")
-      await purchaseFullCourse(courseId, total18)
+      await purchaseFullCourse(courseId, remainingTotal6)
       await loadData()
     } catch (err: any) {
       setError(err?.reason || err?.message || "Failed to purchase full course")
@@ -340,7 +338,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
                     {remaining.length} chapter{remaining.length > 1 ? "s" : ""} remaining
                   </div>
                   <div className="remaining-price">
-                    ${Number(ethers.utils.formatUnits(remainingTotal6, 6)).toFixed(2)} cUSD
+                    ${Number(ethers.utils.formatUnits(remainingTotal6, 6)).toFixed(2)} USDC
                   </div>
                   <button
                     className="primary-btn"
@@ -359,7 +357,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
                   <div className="row-meta">Chapter {ch.id + 1}</div>
                   <div className="row-title">{ch.title}</div>
                   <div className="row-bottom">
-                    <div className="row-price">${formatPrice(ch.priceUSD6)} cUSD</div>
+                    <div className="row-price">${formatPrice(ch.priceUSD6)} USDC</div>
                     {ch.hasAccess ? (
                       <button className="ghost-btn small" onClick={() => handleReadChapter(ch)}>
                         Read

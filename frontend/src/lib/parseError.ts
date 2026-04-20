@@ -2,7 +2,7 @@ export function parseError(err: any): string {
   const raw: string =
     err?.data?.message ?? err?.error?.data?.message ?? err?.reason ?? err?.message ?? ""
 
-  if (/transfer amount exceeds balance/i.test(raw)) return "Insufficient USDC balance. Top up your wallet and try again."
+  if (/transfer amount exceeds balance/i.test(raw)) return "Insufficient payment token balance. Top up your wallet and try again."
   if (/insufficient funds/i.test(raw)) return "Insufficient funds to cover gas. Add a little CELO to your wallet."
   if (/already purchased/i.test(raw)) return "You already own this chapter."
   if (/course inactive/i.test(raw)) return "This course is no longer active."

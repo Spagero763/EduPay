@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { GuideModal } from "@/components/GuideModal"
 
 export function Navbar() {
-  const { address, cusdBalance, isMiniPay, loading } = useMiniPay()
+  const { address, usdcBalance, cusdBalance, paymentToken, isMiniPay, loading } = useMiniPay()
   const { open } = useAppKit()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -65,8 +65,10 @@ export function Navbar() {
                   onClick={() => open()}
                   className="text-xs border border-[#0D0B08]/12 px-3 py-1.5 rounded-full flex items-center gap-2 bg-transparent cursor-pointer"
                 >
-                  <span className="text-[#C4622D] font-medium tabular-nums">{Number(cusdBalance).toFixed(2)}</span>
-                  <span className="text-[#0D0B08]/30">cUSD</span>
+                  <span className="text-[#C4622D] font-medium tabular-nums">
+                    {paymentToken === "USDC" ? usdcBalance : cusdBalance}
+                  </span>
+                  <span className="text-[#0D0B08]/30">{paymentToken}</span>
                   <span className="text-[#0D0B08]/35 font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
                 </button>
               </div>

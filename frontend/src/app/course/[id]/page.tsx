@@ -121,6 +121,8 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     loading: walletLoading,
     connect,
     isConnected,
+    paymentToken,
+    setPaymentToken,
     getPublicEduPay,
     purchaseChapter,
     purchaseFullCourse,
@@ -339,7 +341,29 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
                     {remaining.length} chapter{remaining.length > 1 ? "s" : ""} remaining
                   </div>
                   <div className="remaining-price">
-                    ${Number(ethers.utils.formatUnits(remainingTotal6, 6)).toFixed(2)} USDC
+                    ${Number(ethers.utils.formatUnits(remainingTotal6, 6)).toFixed(2)} {paymentToken}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                    {(["USDC", "CUSD"] as const).map((token) => (
+                      <button
+                        key={token}
+                        type="button"
+                        onClick={() => setPaymentToken(token)}
+                        style={{
+                          border: token === paymentToken ? "1px solid #8a3d17" : "1px solid rgba(32, 26, 20, 0.2)",
+                          background: token === paymentToken ? "rgba(138, 61, 23, 0.08)" : "transparent",
+                          color: "#201a14",
+                          padding: "6px 10px",
+                          fontSize: 10,
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.1em",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {token}
+                      </button>
+                    ))}
                   </div>
                   <button
                     className="primary-btn"
@@ -358,7 +382,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
                   <div className="row-meta">Chapter {ch.id + 1}</div>
                   <div className="row-title">{ch.title}</div>
                   <div className="row-bottom">
-                    <div className="row-price">${formatPrice(ch.priceUSD6)} USDC</div>
+                    <div className="row-price">${formatPrice(ch.priceUSD6)} {paymentToken}</div>
                     {ch.hasAccess ? (
                       <button className="ghost-btn small" onClick={() => handleReadChapter(ch)}>
                         Read

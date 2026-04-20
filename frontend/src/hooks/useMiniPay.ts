@@ -13,8 +13,12 @@ import {
   useAppKitAccount,
   useAppKitProvider,
 } from "@reown/appkit/react"
+import { formatTokenAmount } from "@/lib/formatPrice"
 
 const PUBLIC_RPC = "https://forno.celo.org"
+const PAYMENT_TOKEN_KEY = "edupay.paymentToken"
+
+export type PaymentToken = "USDC" | "CUSD"
 
 export function useMiniPay() {
   const { open } = useAppKit()
@@ -26,6 +30,7 @@ export function useMiniPay() {
   const [signer, setSigner] = useState<ethers.Signer | null>(null)
   const [usdcBalance, setUsdcBalance] = useState("0")
   const [cusdBalance, setCusdBalance] = useState("0")
+  const [paymentToken, setPaymentTokenState] = useState<PaymentToken>("USDC")
   const [loading, setLoading] = useState(true)
 
   const [publicProvider] = useState(
@@ -55,7 +60,7 @@ export function useMiniPay() {
           )
           const bal = await cusd.balanceOf(addr)
 
-          setCusdBalance(ethers.utils.formatEther(bal))
+          setCusdBalance(formatTokenAmount(bal, 18))
 
           const usdc = new ethers.Contract(
             USDC_ADDRESS,
@@ -63,7 +68,7 @@ export function useMiniPay() {
             web3Provider
           )
           const usdcBal = await usdc.balanceOf(addr)
-          setUsdcBalance(ethers.utils.formatUnits(usdcBal, 6))
+          setUsdcBalance(formatTokenAmount(usdcBal, 6))
         } catch (err) {
           console.error("MiniPay setup error:", err)
         }
@@ -73,6 +78,17 @@ export function useMiniPay() {
     }
 
     setup()
+  }, [])
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(PAYMENT_TOKEN_KEY)
+      if (saved === "USDC" || saved === "CUSD") {
+        setPaymentTokenState(saved)
+      }
+    } catch {
+      // ignore storage errors
+    }
   }, [])
 
   // WalletConnect setup
@@ -96,7 +112,7 @@ export function useMiniPay() {
         )
         const bal = await cusd.balanceOf(address)
 
-        setCusdBalance(ethers.utils.formatEther(bal))
+        setCusdBalance(formatTokenAmount(bal, 18))
 
         const usdc = new ethers.Contract(
           USDC_ADDRESS,
@@ -104,7 +120,7 @@ export function useMiniPay() {
           web3Provider
         )
         const usdcBal = await usdc.balanceOf(address)
-        setUsdcBalance(ethers.utils.formatUnits(usdcBal, 6))
+        setUsdcBalance(formatTokenAmount(usdcBal, 6))
       } catch (err) {
         console.error("wallet setup error:", err)
       }
@@ -117,6 +133,15 @@ export function useMiniPay() {
     const eth = (window as { ethereum?: { isMiniPay?: boolean } }).ethereum
     if (eth?.isMiniPay) return
     open()
+  }
+
+  function setPaymentToken(token: PaymentToken) {
+    setPaymentTokenState(token)
+    try {
+      window.localStorage.setItem(PAYMENT_TOKEN_KEY, token)
+    } catch {
+      // ignore storage errors
+    }
   }
 
   function getEduPay(withSigner = false) {
@@ -142,24 +167,31 @@ export function useMiniPay() {
     return new ethers.Contract(USDC_ADDRESS, USDC_ABI, runner)
   }
 
-  async function ensureApproved(amount: ethers.BigNumber) {
+  function toTokenAmount(priceIn6: ethers.BigNumber, token: PaymentToken) {
+    if (token === "CUSD") return priceIn6.mul("1000000000000")
+    return priceIn6
+  }
+
+  async function ensureApproved(priceIn6: ethers.BigNumber) {
     if (!signer) throw new Error("Wallet not connected")
 
     const signerAddress = await signer.getAddress()
-    const usdc = getUsdc(true)
+    const token = paymentToken
+    const tokenContract = token === "USDC" ? getUsdc(true) : getCusd(true)
+    const tokenAddress = token === "USDC" ? USDC_ADDRESS : CUSD_ADDRESS
+    const requiredAmount = toTokenAmount(priceIn6, token)
 
-    const allowance: ethers.BigNumber = await usdc.allowance(
+    const allowance: ethers.BigNumber = await tokenContract.allowance(
       signerAddress,
       EDUPAY_ADDRESS
     )
 
-    if (allowance.lt(amount)) {
-      const tx = await usdc.approve(
-        EDUPAY_ADDRESS,
-        ethers.constants.MaxUint256
-      )
+    if (allowance.lt(requiredAmount)) {
+      const tx = await tokenContract.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256)
       await tx.wait()
     }
+
+    return tokenAddress
   }
 
   async function purchaseChapter(
@@ -169,10 +201,10 @@ export function useMiniPay() {
   ) {
     if (!signer) throw new Error("Wallet not connected")
 
-    await ensureApproved(priceIn6)
+    const tokenAddress = await ensureApproved(priceIn6)
 
     const eduPay = getEduPay(true)
-    const tx = await eduPay.purchaseChapter(courseId, chapterId, USDC_ADDRESS)
+    const tx = await eduPay.purchaseChapter(courseId, chapterId, tokenAddress)
 
     return tx.wait()
   }
@@ -183,10 +215,10 @@ export function useMiniPay() {
   ) {
     if (!signer) throw new Error("Wallet not connected")
 
-    await ensureApproved(priceIn6)
+    const tokenAddress = await ensureApproved(priceIn6)
 
     const eduPay = getEduPay(true)
-    const tx = await eduPay.purchaseFullCourse(courseId, USDC_ADDRESS)
+    const tx = await eduPay.purchaseFullCourse(courseId, tokenAddress)
 
     return tx.wait()
   }
@@ -384,6 +416,8 @@ export function useMiniPay() {
     isConnected: isConnected || isMiniPay,
     provider,
     signer,
+    paymentToken,
+    setPaymentToken,
     usdcBalance,
     cusdBalance,
     loading,

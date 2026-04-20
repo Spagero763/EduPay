@@ -108,7 +108,7 @@ export function AddChapterPanel({ courseId, existingCount, onDone }: Props) {
       </div>
 
       <div style={{ marginBottom: 32 }}>
-        <div style={{ ...L, marginBottom: 10 }}>Price (USDC) *</div>
+        <div style={{ ...L, marginBottom: 10 }}>Price (USD) *</div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ fontSize: 16, color: "rgba(13,11,8,0.3)" }}>$</span>
           <input
@@ -117,7 +117,7 @@ export function AddChapterPanel({ courseId, existingCount, onDone }: Props) {
             step="0.10" min="0.01" placeholder="0.50"
             style={{ width: 120, background: "transparent", border: "none", borderBottom: "1px solid rgba(13,11,8,0.12)", padding: "8px 0", fontSize: 18, fontWeight: 600, color: "#0D0B08", fontFamily: "inherit", outline: "none" }}
           />
-          <span style={{ fontSize: 13, color: "rgba(13,11,8,0.3)", fontWeight: 300 }}>USDC per lesson</span>
+          <span style={{ fontSize: 13, color: "rgba(13,11,8,0.3)", fontWeight: 300 }}>USD per lesson</span>
         </div>
       </div>
 

@@ -19,3 +19,17 @@ export function formatPrice(rawPrice: string | ethers.BigNumber): string {
 export function isLegacyPrice(rawPrice: string | ethers.BigNumber): boolean {
   return ethers.BigNumber.from(rawPrice).gt(LEGACY_THRESHOLD)
 }
+
+export function formatTokenAmount(
+  rawAmount: string | ethers.BigNumber,
+  decimals: number,
+  fractionDigits = 2
+): string {
+  try {
+    const value = Number(ethers.utils.formatUnits(rawAmount, decimals))
+    if (!Number.isFinite(value)) return "0.00"
+    return value.toFixed(fractionDigits)
+  } catch {
+    return "0.00"
+  }
+}

@@ -129,7 +129,6 @@ export default function CoursePage({ params }: { params: { id: string } }) {
         priceUSD6: ethers.BigNumber.from(ch[1]),
         contentHash: "",
         hasAccess: false,
-        content: null,
       })
     }
 

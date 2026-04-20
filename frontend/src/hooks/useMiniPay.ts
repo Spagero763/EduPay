@@ -22,24 +22,27 @@ export function useMiniPay() {
   const [isMiniPay, setIsMiniPay] = useState(false)
   const [provider, setProvider] = useState<ethers.providers.JsonRpcProvider | ethers.providers.Web3Provider | null>(null)
   const [signer, setSigner] = useState<ethers.Signer | null>(null)
+  const [cusdBalance, setCusdBalance] = useState("0")
+  const [loading, setLoading] = useState(true)
 
   const [publicProvider] = useState(
     () => new ethers.providers.JsonRpcProvider(PUBLIC_RPC)
   )
 
-  // Setup MiniPay
   useEffect(() => {
     async function setup() {
-      const eth = (window as any).ethereum
+      setProvider(publicProvider)
+      const eth = (window as { ethereum?: { isMiniPay?: boolean } }).ethereum
 
       if (eth?.isMiniPay) {
         setIsMiniPay(true)
         try {
-          const web3Provider = new ethers.providers.Web3Provider(eth)
+          const web3Provider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
           await web3Provider.send("eth_requestAccounts", [])
 
           const _signer = web3Provider.getSigner()
           setSigner(_signer)
+          setProvider(web3Provider)
 
           const addr = await _signer.getAddress()
           const cusd = new ethers.Contract(
@@ -68,11 +71,12 @@ export function useMiniPay() {
     async function setup() {
       try {
         const web3Provider = new ethers.providers.Web3Provider(
-          walletProvider as any
+          walletProvider as ethers.providers.ExternalProvider
         )
 
         const _signer = web3Provider.getSigner()
         setSigner(_signer)
+        setProvider(web3Provider)
 
         const cusd = new ethers.Contract(
           CUSD_ADDRESS,
@@ -91,7 +95,7 @@ export function useMiniPay() {
   }, [walletProvider, address])
 
   function connect() {
-    const eth = (window as any).ethereum
+    const eth = (window as { ethereum?: { isMiniPay?: boolean } }).ethereum
     if (eth?.isMiniPay) return
     open()
   }
@@ -104,8 +108,13 @@ export function useMiniPay() {
 
   // ✅ ADD THIS (this is the only missing piece)
   function getPublicEduPay() {
-    if (!provider) throw new Error("No provider")
-    return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, provider)
+    return new ethers.Contract(EDUPAY_ADDRESS, EDUPAY_ABI, publicProvider)
+  }
+
+  function getCusd(withSigner = false) {
+    const runner = withSigner ? signer : (provider ?? publicProvider)
+    if (!runner) throw new Error("No provider")
+    return new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, runner)
   }
 
   async function ensureApproved(amount: ethers.BigNumber) {
@@ -122,8 +131,7 @@ export function useMiniPay() {
     if (allowance.lt(amount)) {
       const tx = await cusd.approve(
         EDUPAY_ADDRESS,
-        ethers.constants.MaxUint256,
-        { gasLimit: 100000 }
+        ethers.constants.MaxUint256
       )
       await tx.wait()
     }
@@ -139,12 +147,7 @@ export function useMiniPay() {
     await ensureApproved(priceIn18)
 
     const eduPay = getEduPay(true)
-    const tx = await eduPay.purchaseChapter(
-      courseId,
-      chapterId,
-      CUSD_ADDRESS,
-      { gasLimit: 300000 }
-    )
+    const tx = await eduPay.purchaseChapter(courseId, chapterId, CUSD_ADDRESS)
 
     return tx.wait()
   }
@@ -158,11 +161,7 @@ export function useMiniPay() {
     await ensureApproved(priceIn18)
 
     const eduPay = getEduPay(true)
-    const tx = await eduPay.purchaseFullCourse(
-      courseId,
-      CUSD_ADDRESS,
-      { gasLimit: 500000 }
-    )
+    const tx = await eduPay.purchaseFullCourse(courseId, CUSD_ADDRESS)
 
     return tx.wait()
   }
@@ -174,10 +173,10 @@ export function useMiniPay() {
   ): Promise<number> {
     if (!signer) throw new Error("Wallet not connected")
 
-    const eth = (window as any).ethereum
+    const eth = (window as { ethereum?: { isMiniPay?: boolean; request?: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
     const isMiniPayEnv = !!eth?.isMiniPay
 
-    if (isMiniPayEnv) {
+    if (isMiniPayEnv && eth?.request) {
       const iface = new ethers.utils.Interface([
         "function createCourse(string memory _title, string memory _description) external returns (uint256)",
       ])
@@ -187,9 +186,9 @@ export function useMiniPay() {
         description,
       ])
 
-      const accounts: string[] = await eth.request({
+      const accounts = await eth.request({
         method: "eth_requestAccounts",
-      })
+      }) as string[]
 
       const txHash = await eth.request({
         method: "eth_sendTransaction",
@@ -202,16 +201,16 @@ export function useMiniPay() {
             feeCurrency: CUSD_ADDRESS,
           },
         ],
-      })
+      }) as string
 
-      const miniProvider = new ethers.providers.Web3Provider(eth)
+      const miniProvider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
       const receipt = await miniProvider.waitForTransaction(
         txHash,
         1,
         120000
       )
 
-      const iface2 = new ethers.utils.Interface(EDUPAY_ABI as any)
+      const iface2 = new ethers.utils.Interface(EDUPAY_ABI)
 
       for (const log of receipt.logs) {
         try {
@@ -232,12 +231,10 @@ export function useMiniPay() {
     }
 
     const eduPay = getEduPay(true)
-    const tx = await eduPay.createCourse(title, description, {
-      gasLimit: 300000,
-    })
+    const tx = await eduPay.createCourse(title, description)
 
-    const receipt = await tx.wait()
-    const iface = new ethers.utils.Interface(EDUPAY_ABI as any)
+    const receipt = await tx.wait() as ethers.ContractReceipt
+    const iface = new ethers.utils.Interface(EDUPAY_ABI)
 
     for (const log of receipt.logs) {
       try {
@@ -272,10 +269,10 @@ export function useMiniPay() {
       )
     }
 
-    const eth = (window as any).ethereum
+    const eth = (window as { ethereum?: { isMiniPay?: boolean; request?: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
     const isMiniPayEnv = !!eth?.isMiniPay
 
-    if (isMiniPayEnv) {
+    if (isMiniPayEnv && eth?.request) {
       const iface = new ethers.utils.Interface([
         "function addChapter(uint256 _courseId, string memory _title, string memory _contentHash, uint256 _price) external returns (uint256)",
       ])
@@ -287,9 +284,9 @@ export function useMiniPay() {
         priceIn6,
       ])
 
-      const accounts: string[] = await eth.request({
+      const accounts = await eth.request({
         method: "eth_requestAccounts",
-      })
+      }) as string[]
 
       const txHash = await eth.request({
         method: "eth_sendTransaction",
@@ -302,20 +299,14 @@ export function useMiniPay() {
             feeCurrency: CUSD_ADDRESS,
           },
         ],
-      })
+      }) as string
 
-      const miniProvider = new ethers.providers.Web3Provider(eth)
+      const miniProvider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
       return miniProvider.waitForTransaction(txHash, 1, 120000)
     }
 
     const eduPay = getEduPay(true)
-    const tx = await eduPay.addChapter(
-      courseId,
-      title,
-      contentHash,
-      priceIn6,
-      { gasLimit: 500000 }
-    )
+    const tx = await eduPay.addChapter(courseId, title, contentHash, priceIn6)
 
     return tx.wait()
   }
@@ -341,17 +332,16 @@ export function useMiniPay() {
         return await signer.getAddress()
       } catch {}
     }
-    throw new Error("CourseCreated event not found")
+    return null
   }
 
-  async function addChapter(
+  async function updateChapter(
     courseId: number,
-    title: string,
-    contentHash: string,
+    chapterId: number,
     price: ethers.BigNumber
   ) {
     const eduPay = getEduPay(true)
-    const tx = await eduPay.addChapter(courseId, title, contentHash, price)
+    const tx = await eduPay.updateChapter(courseId, chapterId, "", price)
     return tx.wait()
   }
 
@@ -359,16 +349,19 @@ export function useMiniPay() {
     isMiniPay,
     address: address ?? null,
     isConnected: isConnected || isMiniPay,
+    provider,
+    signer,
     cusdBalance,
     loading,
     connect,
     getEduPay,
-    getPublicEduPay, // ✅ NOW EXISTS
-    getUsdc,
+    getPublicEduPay,
+    getCusd,
     getChapterContent,
     purchaseChapter,
     purchaseFullCourse,
     createCourse,
+    getAddress,
     addChapter,
     updateChapter,
   }

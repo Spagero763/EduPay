@@ -43,7 +43,7 @@ export function ChapterEditor({ onSave }: ChapterEditorProps) {
     if (blocks.length <= 1) return
     setBlocks(prev => prev.filter(b => b.id !== id))
     setSaved(false)
-    setWarning("")
+    setSizeWarning("")
   }
 
   function handleSave() {

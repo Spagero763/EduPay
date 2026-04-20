@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { use, useEffect, useState, useCallback } from "react"
 import { ethers } from "ethers"
 import Link from "next/link"
 import { useMiniPay } from "@/hooks/useMiniPay"
@@ -78,8 +78,10 @@ function renderContent(hash: string): React.ReactNode {
   return null
 }
 
-export default function CoursePage({ params }: { params: { id: string } }) {
-  const courseId = Number(params.id)
+export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const courseId = Number(id)
+  const isValidCourseId = Number.isInteger(courseId) && courseId >= 0
 
   const {
     address,
@@ -93,10 +95,15 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
   const [course, setCourse] = useState<Course | null>(null)
   const [chapters, setChapters] = useState<Chapter[]>([])
-  const [addingChapter, setAddingChapter] = useState(false) // ✅ Fix 5
-  const [editing, setEditing] = useState(false) // ✅ Fix 4
+  const [addingChapter, setAddingChapter] = useState(false)
+  const [error, setError] = useState("")
 
   const loadData = useCallback(async () => {
+    if (!isValidCourseId) {
+      setError("Invalid course id")
+      return
+    }
+
     const provider = new ethers.providers.JsonRpcProvider("https://forno.celo.org")
 
     const eduPay = new ethers.Contract(
@@ -133,12 +140,13 @@ export default function CoursePage({ params }: { params: { id: string } }) {
     }
 
     setChapters(list)
-  }, [courseId])
+  }, [courseId, isValidCourseId])
 
   useEffect(() => {
     if (!walletLoading) loadData()
   }, [walletLoading, loadData])
 
+  if (!isValidCourseId) return <div>Invalid course id</div>
   if (!course) return <div>Loading...</div>
 
   return (
@@ -151,7 +159,6 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
         <div>{course.tutor}</div>
 
-        {/* ✅ Fix 5 button */}
         {address && course && address.toLowerCase() === course.tutor.toLowerCase() && (
           <button
             onClick={() => setAddingChapter(true)}
@@ -171,13 +178,6 @@ export default function CoursePage({ params }: { params: { id: string } }) {
             + Add chapter
           </button>
         )}
-
-        {/* ✅ Fix 4 button */}
-        {address && course && address.toLowerCase() === course.tutor.toLowerCase() && (
-          <button onClick={() => setEditing(true)}>
-            Add chapter
-          </button>
-        )}
       </div>
 
       {/* CHAPTERS */}
@@ -186,7 +186,6 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           <div key={ch.id}>{ch.title}</div>
         ))}
 
-        {/* ✅ Fix 5 panel */}
         {addingChapter && (
           <AddChapterPanel
             courseId={courseId}
@@ -198,17 +197,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           />
         )}
 
-        {/* ✅ Fix 4 panel */}
-        {editing && address && course && address.toLowerCase() === course.tutor.toLowerCase() && (
-          <AddChapterPanel
-            courseId={courseId}
-            existingCount={chapters.length}
-            onDone={() => {
-              setEditing(false)
-              loadData()
-            }}
-          />
-        )}
+        {error && <div style={{ marginTop: 12, color: "#C4622D", fontSize: 13 }}>{error}</div>}
       </section>
     </div>
   )

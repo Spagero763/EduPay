@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useMiniPay } from "@/hooks/useMiniPay"
 import { ChapterEditor } from "@/components/ChapterEditor"
 import { motion } from "framer-motion"
+import { parseError } from "@/lib/parseError"
 
 type ChapterDraft = {
   title: string
@@ -63,14 +64,27 @@ export default function CreatePage() {
   setPublishing(true)
   setPublishStep("Creating course on Celo...")
   try {
-    const id = await createCourse(courseTitle.trim(), courseDescription.trim())
+    let id: number | null = null
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        id = await createCourse(courseTitle.trim(), courseDescription.trim())
+        break
+      } catch (innerErr: any) {
+        const raw = innerErr?.message ?? innerErr?.reason ?? ""
+        const isRateLimited = /rate limited|too many requests|429/i.test(raw)
+        if (!isRateLimited || attempt === 1) throw innerErr
+        setPublishStep("Network is busy. Retrying...")
+        await new Promise((resolve) => setTimeout(resolve, 1200))
+      }
+    }
+    if (id === null) throw new Error("Failed to create course")
     setCourseId(id)
     setPublishStep("Course created! Waiting for blockchain confirmation...")
     // Wait 3 seconds for RPC to index the transaction
     await new Promise(resolve => setTimeout(resolve, 3000))
     setStep("chapters")
   } catch (err: any) {
-    setError(err?.reason || err?.message || "Failed to create course")
+    setError(parseError(err))
   } finally {
     setPublishing(false)
     setPublishStep("")
@@ -98,7 +112,7 @@ export default function CreatePage() {
       }
       setDone(true)
     } catch (err: any) {
-      setError(err?.reason || err?.message || "Failed to publish chapters")
+      setError(parseError(err))
       setStep("chapters")
     } finally {
       setPublishing(false)
@@ -264,7 +278,7 @@ export default function CreatePage() {
                 </div>
 
                 <div>
-                  <label style={{ ...label, display: "block", marginBottom: 10 }}>Price (cUSD) *</label>
+                  <label style={{ ...label, display: "block", marginBottom: 10 }}>Price (USDC) *</label>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ fontSize: 18, color: "rgba(13,11,8,0.3)", fontWeight: 300 }}>$</span>
                     <input
@@ -276,7 +290,7 @@ export default function CreatePage() {
                       placeholder="0.50"
                       style={{ ...inputStyle, fontSize: 18, fontWeight: 600, width: 120 }}
                     />
-                    <span style={{ fontSize: 13, color: "rgba(13,11,8,0.3)", fontWeight: 300 }}>cUSD per lesson</span>
+                    <span style={{ fontSize: 13, color: "rgba(13,11,8,0.3)", fontWeight: 300 }}>USDC per lesson</span>
                   </div>
                 </div>
               </div>

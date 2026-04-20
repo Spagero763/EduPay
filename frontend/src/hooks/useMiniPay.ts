@@ -3,8 +3,10 @@ import { ethers } from "ethers"
 import {
   EDUPAY_ADDRESS,
   CUSD_ADDRESS,
+  USDC_ADDRESS,
   EDUPAY_ABI,
   CUSD_ABI,
+  USDC_ABI,
 } from "@/lib/contract"
 import {
   useAppKit,
@@ -22,6 +24,7 @@ export function useMiniPay() {
   const [isMiniPay, setIsMiniPay] = useState(false)
   const [provider, setProvider] = useState<ethers.providers.JsonRpcProvider | ethers.providers.Web3Provider | null>(null)
   const [signer, setSigner] = useState<ethers.Signer | null>(null)
+  const [usdcBalance, setUsdcBalance] = useState("0")
   const [cusdBalance, setCusdBalance] = useState("0")
   const [loading, setLoading] = useState(true)
 
@@ -53,6 +56,14 @@ export function useMiniPay() {
           const bal = await cusd.balanceOf(addr)
 
           setCusdBalance(ethers.utils.formatEther(bal))
+
+          const usdc = new ethers.Contract(
+            USDC_ADDRESS,
+            USDC_ABI,
+            web3Provider
+          )
+          const usdcBal = await usdc.balanceOf(addr)
+          setUsdcBalance(ethers.utils.formatUnits(usdcBal, 6))
         } catch (err) {
           console.error("MiniPay setup error:", err)
         }
@@ -86,6 +97,14 @@ export function useMiniPay() {
         const bal = await cusd.balanceOf(address)
 
         setCusdBalance(ethers.utils.formatEther(bal))
+
+        const usdc = new ethers.Contract(
+          USDC_ADDRESS,
+          USDC_ABI,
+          web3Provider
+        )
+        const usdcBal = await usdc.balanceOf(address)
+        setUsdcBalance(ethers.utils.formatUnits(usdcBal, 6))
       } catch (err) {
         console.error("wallet setup error:", err)
       }
@@ -117,19 +136,25 @@ export function useMiniPay() {
     return new ethers.Contract(CUSD_ADDRESS, CUSD_ABI, runner)
   }
 
+  function getUsdc(withSigner = false) {
+    const runner = withSigner ? signer : (provider ?? publicProvider)
+    if (!runner) throw new Error("No provider")
+    return new ethers.Contract(USDC_ADDRESS, USDC_ABI, runner)
+  }
+
   async function ensureApproved(amount: ethers.BigNumber) {
     if (!signer) throw new Error("Wallet not connected")
 
     const signerAddress = await signer.getAddress()
-    const cusd = getCusd(true)
+    const usdc = getUsdc(true)
 
-    const allowance: ethers.BigNumber = await cusd.allowance(
+    const allowance: ethers.BigNumber = await usdc.allowance(
       signerAddress,
       EDUPAY_ADDRESS
     )
 
     if (allowance.lt(amount)) {
-      const tx = await cusd.approve(
+      const tx = await usdc.approve(
         EDUPAY_ADDRESS,
         ethers.constants.MaxUint256
       )
@@ -140,28 +165,28 @@ export function useMiniPay() {
   async function purchaseChapter(
     courseId: number,
     chapterId: number,
-    priceIn18: ethers.BigNumber
+    priceIn6: ethers.BigNumber
   ) {
     if (!signer) throw new Error("Wallet not connected")
 
-    await ensureApproved(priceIn18)
+    await ensureApproved(priceIn6)
 
     const eduPay = getEduPay(true)
-    const tx = await eduPay.purchaseChapter(courseId, chapterId, CUSD_ADDRESS)
+    const tx = await eduPay.purchaseChapter(courseId, chapterId, USDC_ADDRESS)
 
     return tx.wait()
   }
 
   async function purchaseFullCourse(
     courseId: number,
-    priceIn18: ethers.BigNumber
+    priceIn6: ethers.BigNumber
   ) {
     if (!signer) throw new Error("Wallet not connected")
 
-    await ensureApproved(priceIn18)
+    await ensureApproved(priceIn6)
 
     const eduPay = getEduPay(true)
-    const tx = await eduPay.purchaseFullCourse(courseId, CUSD_ADDRESS)
+    const tx = await eduPay.purchaseFullCourse(courseId, USDC_ADDRESS)
 
     return tx.wait()
   }
@@ -186,48 +211,52 @@ export function useMiniPay() {
         description,
       ])
 
-      const accounts = await eth.request({
-        method: "eth_requestAccounts",
-      }) as string[]
+      try {
+        const existingAccounts = await eth.request({ method: "eth_accounts" }) as string[]
+        const accounts = existingAccounts.length
+          ? existingAccounts
+          : (await eth.request({ method: "eth_requestAccounts" }) as string[])
 
-      const txHash = await eth.request({
-        method: "eth_sendTransaction",
-        params: [
-          {
-            from: accounts[0],
-            to: EDUPAY_ADDRESS,
-            data,
-            gas: "0x4C4B4",
-            feeCurrency: CUSD_ADDRESS,
-          },
-        ],
-      }) as string
+        const txHash = await eth.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: accounts[0],
+              to: EDUPAY_ADDRESS,
+              data,
+              gas: "0x4C4B4",
+            },
+          ],
+        }) as string
 
-      const miniProvider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
-      const receipt = await miniProvider.waitForTransaction(
-        txHash,
-        1,
-        120000
-      )
+        const miniProvider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
+        const receipt = await miniProvider.waitForTransaction(
+          txHash,
+          1,
+          120000
+        )
 
-      const iface2 = new ethers.utils.Interface(EDUPAY_ABI)
+        const iface2 = new ethers.utils.Interface(EDUPAY_ABI)
 
-      for (const log of receipt.logs) {
-        try {
-          const parsed = iface2.parseLog(log)
-          if (parsed?.name === "CourseCreated") {
-            return Number(parsed.args.courseId)
-          }
-        } catch {}
+        for (const log of receipt.logs) {
+          try {
+            const parsed = iface2.parseLog(log)
+            if (parsed?.name === "CourseCreated") {
+              return Number(parsed.args.courseId)
+            }
+          } catch {}
+        }
+
+        const contract = new ethers.Contract(
+          EDUPAY_ADDRESS,
+          EDUPAY_ABI,
+          publicProvider
+        )
+        const count = await contract.courseCount()
+        return Number(count) - 1
+      } catch {
+        // Fallback to signer-based call if RPC/provider wallet path is rate-limited.
       }
-
-      const contract = new ethers.Contract(
-        EDUPAY_ADDRESS,
-        EDUPAY_ABI,
-        publicProvider
-      )
-      const count = await contract.courseCount()
-      return Number(count) - 1
     }
 
     const eduPay = getEduPay(true)
@@ -284,25 +313,29 @@ export function useMiniPay() {
         priceIn6,
       ])
 
-      const accounts = await eth.request({
-        method: "eth_requestAccounts",
-      }) as string[]
+      try {
+        const existingAccounts = await eth.request({ method: "eth_accounts" }) as string[]
+        const accounts = existingAccounts.length
+          ? existingAccounts
+          : (await eth.request({ method: "eth_requestAccounts" }) as string[])
 
-      const txHash = await eth.request({
-        method: "eth_sendTransaction",
-        params: [
-          {
-            from: accounts[0],
-            to: EDUPAY_ADDRESS,
-            data,
-            gas: "0x7A120",
-            feeCurrency: CUSD_ADDRESS,
-          },
-        ],
-      }) as string
+        const txHash = await eth.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: accounts[0],
+              to: EDUPAY_ADDRESS,
+              data,
+              gas: "0x7A120",
+            },
+          ],
+        }) as string
 
-      const miniProvider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
-      return miniProvider.waitForTransaction(txHash, 1, 120000)
+        const miniProvider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
+        return miniProvider.waitForTransaction(txHash, 1, 120000)
+      } catch {
+        // Fallback to signer-based call if RPC/provider wallet path is rate-limited.
+      }
     }
 
     const eduPay = getEduPay(true)
@@ -351,12 +384,14 @@ export function useMiniPay() {
     isConnected: isConnected || isMiniPay,
     provider,
     signer,
+    usdcBalance,
     cusdBalance,
     loading,
     connect,
     getEduPay,
     getPublicEduPay,
     getCusd,
+    getUsdc,
     getChapterContent,
     purchaseChapter,
     purchaseFullCourse,

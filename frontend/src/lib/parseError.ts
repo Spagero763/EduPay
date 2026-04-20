@@ -13,6 +13,12 @@ export function parseError(err: any): string {
   if (/empty title/i.test(raw)) return "Title cannot be empty."
   if (/empty hash/i.test(raw)) return "Content hash cannot be empty."
   if (/user rejected|user denied|rejected the request/i.test(raw)) return "Transaction cancelled."
+  if (/rate limited|too many requests|429/i.test(raw)) {
+    return "RPC request is being rate limited. Please wait a few seconds and try again."
+  }
+  if (/timeout|timed out|network error|failed to fetch/i.test(raw)) {
+    return "Network is unstable right now. Please retry in a moment."
+  }
   if (/unpredictable_gas_limit/i.test(err?.code ?? "")) return parseError({ message: raw })
 
   return "Something went wrong. Please try again."

@@ -211,48 +211,52 @@ export function useMiniPay() {
         description,
       ])
 
-      const accounts = await eth.request({
-        method: "eth_requestAccounts",
-      }) as string[]
+      try {
+        const existingAccounts = await eth.request({ method: "eth_accounts" }) as string[]
+        const accounts = existingAccounts.length
+          ? existingAccounts
+          : (await eth.request({ method: "eth_requestAccounts" }) as string[])
 
-      const txHash = await eth.request({
-        method: "eth_sendTransaction",
-        params: [
-          {
-            from: accounts[0],
-            to: EDUPAY_ADDRESS,
-            data,
-            gas: "0x4C4B4",
-            feeCurrency: CUSD_ADDRESS,
-          },
-        ],
-      }) as string
+        const txHash = await eth.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: accounts[0],
+              to: EDUPAY_ADDRESS,
+              data,
+              gas: "0x4C4B4",
+            },
+          ],
+        }) as string
 
-      const miniProvider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
-      const receipt = await miniProvider.waitForTransaction(
-        txHash,
-        1,
-        120000
-      )
+        const miniProvider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
+        const receipt = await miniProvider.waitForTransaction(
+          txHash,
+          1,
+          120000
+        )
 
-      const iface2 = new ethers.utils.Interface(EDUPAY_ABI)
+        const iface2 = new ethers.utils.Interface(EDUPAY_ABI)
 
-      for (const log of receipt.logs) {
-        try {
-          const parsed = iface2.parseLog(log)
-          if (parsed?.name === "CourseCreated") {
-            return Number(parsed.args.courseId)
-          }
-        } catch {}
+        for (const log of receipt.logs) {
+          try {
+            const parsed = iface2.parseLog(log)
+            if (parsed?.name === "CourseCreated") {
+              return Number(parsed.args.courseId)
+            }
+          } catch {}
+        }
+
+        const contract = new ethers.Contract(
+          EDUPAY_ADDRESS,
+          EDUPAY_ABI,
+          publicProvider
+        )
+        const count = await contract.courseCount()
+        return Number(count) - 1
+      } catch {
+        // Fallback to signer-based call if RPC/provider wallet path is rate-limited.
       }
-
-      const contract = new ethers.Contract(
-        EDUPAY_ADDRESS,
-        EDUPAY_ABI,
-        publicProvider
-      )
-      const count = await contract.courseCount()
-      return Number(count) - 1
     }
 
     const eduPay = getEduPay(true)
@@ -309,25 +313,29 @@ export function useMiniPay() {
         priceIn6,
       ])
 
-      const accounts = await eth.request({
-        method: "eth_requestAccounts",
-      }) as string[]
+      try {
+        const existingAccounts = await eth.request({ method: "eth_accounts" }) as string[]
+        const accounts = existingAccounts.length
+          ? existingAccounts
+          : (await eth.request({ method: "eth_requestAccounts" }) as string[])
 
-      const txHash = await eth.request({
-        method: "eth_sendTransaction",
-        params: [
-          {
-            from: accounts[0],
-            to: EDUPAY_ADDRESS,
-            data,
-            gas: "0x7A120",
-            feeCurrency: CUSD_ADDRESS,
-          },
-        ],
-      }) as string
+        const txHash = await eth.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: accounts[0],
+              to: EDUPAY_ADDRESS,
+              data,
+              gas: "0x7A120",
+            },
+          ],
+        }) as string
 
-      const miniProvider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
-      return miniProvider.waitForTransaction(txHash, 1, 120000)
+        const miniProvider = new ethers.providers.Web3Provider(eth as ethers.providers.ExternalProvider)
+        return miniProvider.waitForTransaction(txHash, 1, 120000)
+      } catch {
+        // Fallback to signer-based call if RPC/provider wallet path is rate-limited.
+      }
     }
 
     const eduPay = getEduPay(true)

@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 
+const MAX_TEXT_LENGTH = 500_000 // ~500 KB of text
+
 export async function POST(req: NextRequest) {
+  if (!process.env.PINATA_JWT) {
+    return NextResponse.json({ error: "Upload service not configured" }, { status: 503 })
+  }
+
   try {
     const { content, filename } = await req.json()
 
     if (!content) {
       return NextResponse.json({ error: "No content provided" }, { status: 400 })
+    }
+
+    if (typeof content === "string" && content.length > MAX_TEXT_LENGTH) {
+      return NextResponse.json({ error: "Content exceeds 500 KB limit" }, { status: 413 })
     }
 
     const res = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
@@ -22,8 +32,8 @@ export async function POST(req: NextRequest) {
     })
 
     if (!res.ok) {
-      const err = await res.text()
-      throw new Error(`Pinata error: ${err}`)
+      console.error("Pinata text upload failed:", res.status)
+      return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 502 })
     }
 
     const data = await res.json()
@@ -32,7 +42,8 @@ export async function POST(req: NextRequest) {
       gatewayUrl: `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`,
       cid: data.IpfsHash,
     })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err) {
+    console.error("IPFS text upload error:", err)
+    return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 500 })
   }
 }

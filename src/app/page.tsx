@@ -71,7 +71,9 @@ export default function Home() {
               isActive: c.isActive,
             })
           }
-        } catch {}
+        } catch (err) {
+          console.warn(`Failed to load course ${i}:`, err)
+        }
       }
       setCourses(list)
     } catch (err) {

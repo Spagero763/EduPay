@@ -79,7 +79,7 @@ export default function Dashboard() {
               courseTitle: c.title,
               chapterId: chid,
               chapterTitle: ch.title,
-              price: ch.priceUSD.toString(),
+              price: ethers.utils.formatUnits(ch.priceUSD, 6),
             })
           }
         }

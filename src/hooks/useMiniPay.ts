@@ -16,6 +16,15 @@ export function useMiniPay() {
   const [cusdBalance, setCusdBalance] = useState<string>("0")
   const [loading, setLoading] = useState(true)
 
+  async function refreshBalance() {
+    if (!provider || !address) return
+    try {
+      const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, provider)
+      const bal = await usdc.balanceOf(address)
+      setCusdBalance(ethers.utils.formatUnits(bal, 6))
+    } catch {}
+  }
+
   useEffect(() => {
     const publicProvider = new ethers.providers.JsonRpcProvider(PUBLIC_RPC)
     setProvider(publicProvider)
@@ -80,24 +89,28 @@ export function useMiniPay() {
 
   async function purchaseChapter(courseId: number, chapterId: number, price: ethers.BigNumber) {
     const eduPay = getEduPay(true)
-    return approveAndPurchase(price, async () => {
+    const result = await approveAndPurchase(price, async () => {
       const tx = await eduPay.purchaseChapter(courseId, chapterId, USDC_ADDRESS)
       return tx.wait()
     })
+    await refreshBalance()
+    return result
   }
 
   async function purchaseFullCourse(courseId: number, totalPrice: ethers.BigNumber) {
     const eduPay = getEduPay(true)
-    return approveAndPurchase(totalPrice, async () => {
+    const result = await approveAndPurchase(totalPrice, async () => {
       const tx = await eduPay.purchaseFullCourse(courseId, USDC_ADDRESS)
       return tx.wait()
     })
+    await refreshBalance()
+    return result
   }
 
   async function createCourse(title: string, description: string): Promise<number> {
     const eduPay = getEduPay(true)
     const tx = await eduPay.createCourse(title, description)
-    const receipt = await tx.wait() as ethers.ContractReceipt
+    const receipt = await tx.wait() as ethers.providers.TransactionReceipt
     const iface = new ethers.utils.Interface(EDUPAY_ABI)
     for (const log of receipt.logs) {
       try {

@@ -8,6 +8,34 @@
 
 ---
 
+## Local Development
+
+### Prerequisites
+- Node.js 18+
+- A Pinata account for IPFS uploads → [app.pinata.cloud](https://app.pinata.cloud/keys)
+- A ReOwn (WalletConnect) project ID → [cloud.reown.com](https://cloud.reown.com)
+
+### Setup
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Configure environment variables
+cp .env.example .env.local
+# Then fill in PINATA_JWT and NEXT_PUBLIC_REOWN_PROJECT_ID in .env.local
+
+# 3. Run the dev server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+> **Wallet:** Connect MetaMask, Valora, or MiniPay. Make sure you are on **Celo Mainnet** (Chain ID 42220).  
+> **Funds:** You need CELO for gas and USDC on Celo for purchases.
+
+---
+
 ## For Tutors
 
 ### Create a course

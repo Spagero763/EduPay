@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+
 export async function POST(req: NextRequest) {
+  if (!process.env.PINATA_JWT) {
+    return NextResponse.json({ error: "Upload service not configured" }, { status: 503 })
+  }
+
   try {
     const formData = await req.formData()
     const file = formData.get("file") as File
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File exceeds 50 MB limit" }, { status: 413 })
     }
 
     const pinataFormData = new FormData()
@@ -29,8 +39,8 @@ export async function POST(req: NextRequest) {
     })
 
     if (!res.ok) {
-      const err = await res.text()
-      throw new Error(`Pinata error: ${err}`)
+      console.error("Pinata upload failed:", res.status)
+      return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 502 })
     }
 
     const data = await res.json()
@@ -39,7 +49,8 @@ export async function POST(req: NextRequest) {
       gatewayUrl: `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`,
       cid: data.IpfsHash,
     })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err) {
+    console.error("IPFS upload error:", err)
+    return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 500 })
   }
 }

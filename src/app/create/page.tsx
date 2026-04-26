@@ -189,35 +189,31 @@ export default function CreateCourse() {
                     <input style={inputStyle} placeholder="e.g. Introduction to Solidity" value={ch.title} onChange={e => updateChapter(i, "title", e.target.value)} />
                   </div>
                   <div style={{ marginBottom: 32 }}>
-                    <label style={labelStyle}>IPFS content hash</label>
-                    <div style={{ marginBottom: 32 }}>
-  <label style={labelStyle}>Lesson content</label>
-  <p style={{ fontSize: 11, color: "rgba(13,11,8,0.25)", marginBottom: 16, lineHeight: 1.6 }}>
-    Upload directly to IPFS — no external tools needed.
-  </p>
-  {ch.contentHash ? (
-    <div>
-      <div style={{ fontSize: 10, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 8 }}>
-        Uploaded
-      </div>
-      <div style={{ fontSize: 11, fontFamily: "monospace", color: "rgba(13,11,8,0.4)", wordBreak: "break-all", marginBottom: 8 }}>
-        {ch.contentHash}
-      </div>
-      <button
-        onClick={() => updateChapter(i, "contentHash", "")}
-        style={{ fontSize: 10, color: "rgba(13,11,8,0.3)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.18em" }}
-      >
-        Replace
-      </button>
-    </div>
-  ) : (
-    <IPFSUpload
-      onUpload={(hash) => updateChapter(i, "contentHash", hash)}
-      label={`Chapter ${i + 1} content`}
-    />
-  )}
-</div>
-                    <p style={{ fontSize: 10, color: "rgba(13,11,8,0.22)", marginTop: 8, letterSpacing: "0.02em" }}>Upload your lesson to IPFS first, paste the hash here.</p>
+                    <label style={labelStyle}>Lesson content</label>
+                    <p style={{ fontSize: 11, color: "rgba(13,11,8,0.25)", marginBottom: 16, lineHeight: 1.6 }}>
+                      Upload directly to IPFS — no external tools needed.
+                    </p>
+                    {ch.contentHash ? (
+                      <div>
+                        <div style={{ fontSize: 10, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 8 }}>
+                          Uploaded
+                        </div>
+                        <div style={{ fontSize: 11, fontFamily: "monospace", color: "rgba(13,11,8,0.4)", wordBreak: "break-all", marginBottom: 8 }}>
+                          {ch.contentHash}
+                        </div>
+                        <button
+                          onClick={() => updateChapter(i, "contentHash", "")}
+                          style={{ fontSize: 10, color: "rgba(13,11,8,0.3)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.18em" }}
+                        >
+                          Replace
+                        </button>
+                      </div>
+                    ) : (
+                      <IPFSUpload
+                        onUpload={(hash) => updateChapter(i, "contentHash", hash)}
+                        label={`Chapter ${i + 1} content`}
+                      />
+                    )}
                   </div>
                   <div>
                     <label style={labelStyle}>Price (cUSD)</label>

@@ -29,6 +29,7 @@ export function Navbar() {
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled ? "bg-[#F2ECE2]/92 backdrop-blur-sm border-b border-[#0D0B08]/8" : "bg-transparent"
         }`}
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="max-w-7xl mx-auto px-8 md:px-16 py-5 flex items-center justify-between">
           <Link href="/" className="text-[#0D0B08] font-semibold text-sm tracking-widest uppercase">
@@ -81,7 +82,7 @@ export function Navbar() {
               </button>
             )}
 
-            <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden flex flex-col gap-1.5 p-2">
+            <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden flex flex-col gap-1.5 p-3 -mr-1" style={{ minWidth: 44, minHeight: 44, justifyContent: "center", alignItems: "center" }}>
               <span className={`block w-5 h-px bg-[#0D0B08] transition-all duration-300 ${menuOpen ? "rotate-45 translate-y-2" : ""}`} />
               <span className={`block w-5 h-px bg-[#0D0B08] transition-all duration-300 ${menuOpen ? "opacity-0" : ""}`} />
               <span className={`block w-5 h-px bg-[#0D0B08] transition-all duration-300 ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`} />

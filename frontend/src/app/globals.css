@@ -26,12 +26,45 @@ body {
 ::-webkit-scrollbar-track { background: #F2ECE2; }
 ::-webkit-scrollbar-thumb { background: #C4622D; }
 
+/* ── Tablet: collapse 4-col → 2-col ───────────────────── */
+@media (max-width: 1024px) {
+  div[style*="repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  div[style*="grid-template-columns: 1fr 1fr"][style*="gap: 80"] {
+    gap: 40px !important;
+  }
+}
+
+/* ── Mobile: collapse everything → 1-col ──────────────── */
 @media (max-width: 768px) {
   nav { padding: 16px 20px !important; }
   section { padding-left: 20px !important; padding-right: 20px !important; }
   h1 { font-size: clamp(2.5rem, 10vw, 4rem) !important; }
-  div[style*="grid-template-columns: repeat(3"] { grid-template-columns: 1fr !important; }
-  div[style*="grid-template-columns: 1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
-  div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
-  div[style*="grid-template-columns: repeat(auto-fill"] { grid-template-columns: 1fr !important; }
+
+  /* grids */
+  div[style*="repeat(4, 1fr)"]          { grid-template-columns: 1fr !important; }
+  div[style*="repeat(3, 1fr)"]          { grid-template-columns: 1fr !important; }
+  div[style*="repeat(auto-fill"]        { grid-template-columns: 1fr !important; }
+  div[style*="1fr 1fr 1fr"]             { grid-template-columns: 1fr !important; }
+  div[style*="1fr 1fr"]                 { grid-template-columns: 1fr !important; }
+
+  /* gap reduction */
+  div[style*="gap: 80"]  { gap: 32px !important; }
+  div[style*="gap: 64"]  { gap: 24px !important; }
+  div[style*="gap: 48"]  { gap: 16px !important; }
+
+  /* top padding reduction */
+  div[style*="padding-top: 120px"] { padding-top: 80px !important; }
+  div[style*="padding-top: 96px"]  { padding-top: 48px !important; }
+
+  /* horizontal padding */
+  div[style*="padding: 0 64px"]    { padding-left: 20px !important; padding-right: 20px !important; }
+  div[style*="padding: 0 40px"]    { padding-left: 20px !important; padding-right: 20px !important; }
+
+  /* stats secondary row: reduce inner padding */
+  div[style*="padding-left: 32px"] { padding-left: 12px !important; }
+  div[style*="padding-right: 32px"]{ padding-right: 12px !important; }
+  div[style*="padding-left: 48px"] { padding-left: 12px !important; }
+  div[style*="padding-right: 48px"]{ padding-right: 12px !important; }
 }

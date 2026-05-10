@@ -36,7 +36,7 @@ export function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center gap-10">
-            {[["/#courses", "Courses"], ["/create", "Teach"], ["/dashboard", "Dashboard"]].map(([href, label]) => (
+            {[["/#courses", "Courses"], ["/create", "Teach"], ["/dashboard", "Dashboard"], ["/stats", "Stats"]].map(([href, label]) => (
               <Link
                 key={href}
                 href={href}
@@ -98,7 +98,7 @@ export function Navbar() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 bg-[#F2ECE2] flex flex-col items-center justify-center gap-10 md:hidden"
           >
-            {[["/#courses", "Courses"], ["/create", "Teach"], ["/dashboard", "Dashboard"]].map(([href, label], i) => (
+            {[["/#courses", "Courses"], ["/create", "Teach"], ["/dashboard", "Dashboard"], ["/stats", "Stats"]].map(([href, label], i) => (
               <motion.div key={href} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
                 <Link
                   href={href}
@@ -109,7 +109,7 @@ export function Navbar() {
                 </Link>
               </motion.div>
             ))}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.08 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 4 * 0.08 }}>
               <button
                 onClick={() => { setMenuOpen(false); setGuideOpen(true) }}
                 className="text-3xl font-light text-[#0D0B08] hover:text-[#C4622D] tracking-tight transition-colors bg-transparent cursor-pointer"

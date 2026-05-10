@@ -21,6 +21,7 @@ export const EDUPAY_ABI = [
   "function USDC() external view returns (address)",
   "event CourseCreated(uint256 indexed courseId, address indexed tutor, string title)",
   "event ChapterPurchased(uint256 indexed courseId, uint256 indexed chapterId, address indexed student, address token, uint256 amountPaid)",
+  "event FullCoursePurchased(uint256 indexed courseId, address indexed student, address token, uint256 totalPaid)",
 ] as const
 
 export const CUSD_ABI = [

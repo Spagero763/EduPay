@@ -85,6 +85,8 @@ export default function Home() {
   const { getPublicEduPay, loading } = useMiniPay()
   const [courses, setCourses] = useState<Course[]>([])
   const [fetching, setFetching] = useState(true)
+  const [totalLessons, setTotalLessons] = useState(0)
+  const [totalVolume, setTotalVolume] = useState("0")
 
   const heroRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] })
@@ -96,10 +98,15 @@ export default function Home() {
     async function fetchCourses() {
       try {
         const eduPay = getPublicEduPay()
+        const { ethers } = await import("ethers")
         const count = await eduPay.courseCount()
         const list: Course[] = []
+        let lessons = 0
+        let volume = ethers.BigNumber.from(0)
         for (let i = 0; i < Number(count); i++) {
           const c = await eduPay.courses(i)
+          lessons += Number(c.chapterCount)
+          volume = volume.add(c.totalEarned)
           if (c.isActive) {
             list.push({
               id: i,
@@ -112,6 +119,8 @@ export default function Home() {
           }
         }
         setCourses(list)
+        setTotalLessons(lessons)
+        setTotalVolume(Number(ethers.utils.formatUnits(volume, 6)).toFixed(2))
       } catch (err) {
         console.error(err)
       } finally {
@@ -240,9 +249,9 @@ export default function Home() {
       <section style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "80px 64px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
           {[
-            { value: "cUSD", label: "Mento stablecoin" },
-            { value: "95%", label: "Goes to tutors" },
-            { value: "IPFS", label: "Decentralised content" },
+            { value: fetching ? "—" : `${courses.length}`, label: "Active courses" },
+            { value: fetching ? "—" : `${totalLessons}`, label: "Lessons published" },
+            { value: fetching ? "—" : `$${totalVolume}`, label: "Paid to tutors" },
           ].map((stat, i) => (
             <FadeUp key={i} delay={i * 0.1}>
               <div style={{
@@ -250,7 +259,13 @@ export default function Home() {
                 padding: "0 40px",
                 borderLeft: i > 0 ? "1px solid rgba(13,11,8,0.08)" : "none",
               }}>
-                <div style={{ fontSize: 36, fontWeight: 600, color: "#0D0B08", marginBottom: 8, letterSpacing: "-0.02em" }}>{stat.value}</div>
+                {fetching ? (
+                  <div style={{ height: 40, width: 80, background: "rgba(13,11,8,0.06)", borderRadius: 4, margin: "0 auto 12px" }} />
+                ) : (
+                  <div style={{ fontSize: 36, fontWeight: 600, color: i === 2 ? "#C4622D" : "#0D0B08", marginBottom: 8, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
+                    {stat.value}
+                  </div>
+                )}
                 <div style={{ fontSize: 11, color: "rgba(13,11,8,0.3)", textTransform: "uppercase", letterSpacing: "0.18em" }}>{stat.label}</div>
               </div>
             </FadeUp>

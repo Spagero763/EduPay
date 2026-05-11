@@ -87,6 +87,14 @@ export default function Home() {
   const [fetching, setFetching] = useState(true)
   const [totalLessons, setTotalLessons] = useState(0)
   const [totalVolume, setTotalVolume] = useState("0")
+  const [search, setSearch] = useState("")
+
+  const filteredCourses = search.trim()
+    ? courses.filter(c =>
+        c.title.toLowerCase().includes(search.toLowerCase()) ||
+        c.description.toLowerCase().includes(search.toLowerCase())
+      )
+    : courses
 
   const heroRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] })
@@ -277,7 +285,7 @@ export default function Home() {
       <section id="courses" style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "96px 64px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <FadeUp>
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 64 }}>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 40, gap: 24, flexWrap: "wrap" }}>
               <div>
                 <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.24em", marginBottom: 16, fontWeight: 500 }}>
                   Available now
@@ -300,6 +308,50 @@ export default function Home() {
                 Add yours
               </Link>
             </div>
+
+            {/* Search bar */}
+            {!fetching && courses.length > 0 && (
+              <div style={{ marginBottom: 40, position: "relative" }}>
+                <input
+                  type="text"
+                  placeholder="Search courses..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "14px 48px 14px 20px",
+                    fontSize: 14,
+                    color: "#0D0B08",
+                    background: "transparent",
+                    border: "1px solid rgba(13,11,8,0.15)",
+                    outline: "none",
+                    fontFamily: "inherit",
+                    letterSpacing: "0.01em",
+                    boxSizing: "border-box",
+                  }}
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    style={{
+                      position: "absolute",
+                      right: 16,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 16,
+                      color: "rgba(13,11,8,0.3)",
+                      lineHeight: 1,
+                      padding: 4,
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            )}
           </FadeUp>
 
           {fetching ? (
@@ -325,9 +377,19 @@ export default function Home() {
                 </Link>
               </div>
             </FadeUp>
+          ) : filteredCourses.length === 0 ? (
+            <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "64px 0", textAlign: "center" }}>
+              <p style={{ color: "rgba(13,11,8,0.25)", fontSize: 15, marginBottom: 12, fontWeight: 300 }}>No courses match "{search}"</p>
+              <button
+                onClick={() => setSearch("")}
+                style={{ fontSize: 11, color: "#C4622D", background: "none", border: "none", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.18em", fontFamily: "inherit", borderBottom: "1px solid rgba(196,98,45,0.3)", paddingBottom: 2 }}
+              >
+                Clear search
+              </button>
+            </div>
           ) : (
             <div>
-              {courses.map((course, i) => (
+              {filteredCourses.map((course, i) => (
                 <CourseCard key={course.id} course={course} index={i} />
               ))}
               <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)" }} />

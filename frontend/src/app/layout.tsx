@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
 import { Navbar } from "@/components/Navbar"
+import { MiniPayBanner } from "@/components/MiniPayBanner"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.variable} style={{ background: "#F2ECE2", color: "#0D0B08", margin: 0, padding: 0 }}>
         <Providers>
           <Navbar />
+          <MiniPayBanner />
           {children}
         </Providers>
       </body>

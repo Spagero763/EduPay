@@ -297,6 +297,27 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
           <p className="description">{course.description}</p>
           <div className="author">By {course.tutor}</div>
 
+          {/* Progress bar — shown to connected students */}
+          {!isTutor && address && chapters.length > 0 && (() => {
+            const unlocked = chapters.filter(c => c.hasAccess).length
+            const total = chapters.length
+            const pct = Math.round((unlocked / total) * 100)
+            return (
+              <div className="progress-wrap">
+                <div className="progress-label">
+                  <span>{unlocked} of {total} {total === 1 ? "chapter" : "chapters"} unlocked</span>
+                  <span className="progress-pct">{pct}%</span>
+                </div>
+                <div className="progress-track">
+                  <div className="progress-fill" style={{ width: `${pct}%` }} />
+                </div>
+                {unlocked === total && (
+                  <div className="progress-complete">Course complete</div>
+                )}
+              </div>
+            )
+          })()}
+
           {isTutor && (
             <button className="ghost-btn" onClick={() => setAddingChapter(true)}>
               + Add chapter
@@ -464,6 +485,49 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
           letter-spacing: 0.1em;
           text-transform: uppercase;
           color: rgba(32, 26, 20, 0.45);
+        }
+
+        .progress-wrap {
+          margin-top: 24px;
+          max-width: 420px;
+        }
+
+        .progress-label {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          color: rgba(32, 26, 20, 0.45);
+          text-transform: uppercase;
+          letter-spacing: 0.14em;
+          margin-bottom: 8px;
+        }
+
+        .progress-pct {
+          color: #8a3d17;
+          font-weight: 600;
+        }
+
+        .progress-track {
+          height: 4px;
+          background: rgba(32, 26, 20, 0.1);
+          border-radius: 2px;
+          overflow: hidden;
+        }
+
+        .progress-fill {
+          height: 100%;
+          background: #C4622D;
+          border-radius: 2px;
+          transition: width 0.6s ease;
+        }
+
+        .progress-complete {
+          margin-top: 8px;
+          font-size: 10px;
+          color: #8a3d17;
+          text-transform: uppercase;
+          letter-spacing: 0.2em;
+          font-weight: 600;
         }
 
         .layout {

@@ -24,6 +24,13 @@ type PurchasedChapter = {
   price: string
 }
 
+type CourseProgress = {
+  courseId: number
+  courseTitle: string
+  unlockedCount: number
+  totalChapters: number
+}
+
 type Tab = "tutor" | "student"
 
 export default function Dashboard() {
@@ -34,6 +41,7 @@ export default function Dashboard() {
   const [tutorCourses, setTutorCourses] = useState<TutorCourse[]>([])
   const [totalEarned, setTotalEarned] = useState("0")
   const [purchasedChapters, setPurchasedChapters] = useState<PurchasedChapter[]>([])
+  const [continueLearning, setContinueLearning] = useState<CourseProgress[]>([])
 
   useEffect(() => {
     if (loading || !address) { setFetching(false); return }
@@ -68,11 +76,18 @@ export default function Dashboard() {
       // Student purchased chapters — scan all courses
       const courseCount = await eduPay.courseCount()
       const purchased: PurchasedChapter[] = []
+      const progress: CourseProgress[] = []
+
       for (let cid = 0; cid < Number(courseCount); cid++) {
         const c = await eduPay.courses(cid)
-        for (let chid = 0; chid < Number(c.chapterCount); chid++) {
+        const total = Number(c.chapterCount)
+        if (total === 0) continue
+
+        let unlockedCount = 0
+        for (let chid = 0; chid < total; chid++) {
           const has = await eduPay.checkAccess(cid, chid, address)
           if (has) {
+            unlockedCount++
             const ch = await eduPay.getChapter(cid, chid)
             purchased.push({
               courseId: cid,
@@ -83,8 +98,19 @@ export default function Dashboard() {
             })
           }
         }
+
+        if (unlockedCount > 0) {
+          progress.push({
+            courseId: cid,
+            courseTitle: c.title,
+            unlockedCount,
+            totalChapters: total,
+          })
+        }
       }
+
       setPurchasedChapters(purchased)
+      setContinueLearning(progress.filter(p => p.unlockedCount < p.totalChapters))
     } catch (err) {
       console.error(err)
     } finally {
@@ -174,6 +200,63 @@ export default function Dashboard() {
                 </div>
               ))}
             </motion.div>
+
+            {/* Continue Learning */}
+            {!fetching && continueLearning.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.15 }}
+                style={{ marginBottom: 64 }}
+              >
+                <div style={{ ...labelStyle, marginBottom: 24 }}>Continue learning</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  {continueLearning.map((p, i) => {
+                    const pct = Math.round((p.unlockedCount / p.totalChapters) * 100)
+                    return (
+                      <motion.div
+                        key={p.courseId}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: i * 0.06 }}
+                      >
+                        <Link href={`/course/${p.courseId}`} style={{ textDecoration: "none" }}>
+                          <div
+                            style={{
+                              borderTop: "1px solid rgba(13,11,8,0.08)",
+                              padding: "24px 0",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 24,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <h3 style={{ fontSize: 16, fontWeight: 500, color: "#0D0B08", marginBottom: 12, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {p.courseTitle}
+                              </h3>
+                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                <div style={{ flex: 1, height: 3, background: "rgba(13,11,8,0.08)", borderRadius: 2, overflow: "hidden" }}>
+                                  <div style={{ height: "100%", width: `${pct}%`, background: "#C4622D", borderRadius: 2, transition: "width 0.6s ease" }} />
+                                </div>
+                                <div style={{ fontSize: 10, color: "rgba(13,11,8,0.35)", flexShrink: 0, letterSpacing: "0.1em" }}>
+                                  {p.unlockedCount}/{p.totalChapters}
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 10, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 500, flexShrink: 0 }}>
+                              Continue →
+                            </div>
+                          </div>
+                        </Link>
+                      </motion.div>
+                    )
+                  })}
+                  <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)" }} />
+                </div>
+              </motion.div>
+            )}
 
             {/* Tabs */}
             <div style={{ display: "flex", gap: 32, marginBottom: 48, borderBottom: "1px solid rgba(13,11,8,0.08)", paddingBottom: 0 }}>

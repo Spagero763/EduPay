@@ -311,6 +311,15 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     }
   }
 
+  function handleShare() {
+    const url = window.location.href
+    if (navigator.share) {
+      navigator.share({ title: course?.title, text: course?.description, url }).catch(() => null)
+    } else {
+      navigator.clipboard.writeText(url).then(() => toast("Link copied to clipboard!", "success")).catch(() => toast("Could not copy link.", "error"))
+    }
+  }
+
   if (!isValidCourseId) return <div className="state">Invalid course id</div>
   if (!course) return <div className="state">Loading...</div>
 
@@ -318,7 +327,24 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     <div className="page">
       <div className="container">
         <header className="hero">
-          <div className="eyebrow">Course</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+            <div className="eyebrow" style={{ marginBottom: 0 }}>Course</div>
+            <button
+              onClick={handleShare}
+              style={{
+                background: "none", border: "1px solid rgba(13,11,8,0.12)", cursor: "pointer",
+                padding: "6px 14px", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase",
+                color: "rgba(13,11,8,0.45)", display: "flex", alignItems: "center", gap: 6,
+                fontFamily: "inherit", borderRadius: 2,
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <circle cx="13" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="13" cy="13" r="1.5"/>
+                <line x1="4.4" y1="7.2" x2="11.5" y2="4"/><line x1="4.4" y1="8.8" x2="11.5" y2="12"/>
+              </svg>
+              Share
+            </button>
+          </div>
           <h1 className="headline">{course.title}</h1>
           <p className="description">{course.description}</p>
           <div className="author">By {course.tutor}</div>

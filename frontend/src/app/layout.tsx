@@ -5,6 +5,7 @@ import { Providers } from "./providers"
 import { Navbar } from "@/components/Navbar"
 import { MiniPayBanner } from "@/components/MiniPayBanner"
 import { BottomNav } from "@/components/BottomNav"
+import { ToastContainer } from "@/components/Toast"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MiniPayBanner />
           {children}
           <BottomNav />
+          <ToastContainer />
         </Providers>
       </body>
     </html>

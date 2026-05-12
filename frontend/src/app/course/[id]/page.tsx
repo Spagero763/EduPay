@@ -6,6 +6,7 @@ import { useMiniPay } from "@/hooks/useMiniPay"
 import { AddChapterPanel } from "@/components/AddChapterPanel"
 import { formatPrice, isLegacyPrice } from "@/lib/formatPrice"
 import { parseError } from "@/lib/parseError"
+import { toast } from "@/components/Toast"
 
 type Chapter = {
   id: number
@@ -235,8 +236,11 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     try {
       await purchaseChapter(courseId, chapter.id, chapter.priceUSD6)
       await loadData()
+      toast("Chapter unlocked! Start reading now.", "success")
     } catch (err: any) {
-      setError(parseError(err))
+      const msg = parseError(err)
+      setError(msg)
+      toast(msg, "error")
     } finally {
       setPurchasingChapterId(null)
     }
@@ -263,8 +267,11 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     try {
       await purchaseFullCourse(courseId, remainingTotal6)
       await loadData()
+      toast("Full course unlocked! Happy learning.", "success")
     } catch (err: any) {
-      setError(parseError(err))
+      const msg = parseError(err)
+      setError(msg)
+      toast(msg, "error")
     } finally {
       setBuyingFullCourse(false)
     }
@@ -294,8 +301,11 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     try {
       await toggleCourse(courseId)
       await loadData()
+      toast(course.isActive ? "Course deactivated and hidden from listing." : "Course reactivated.", "info")
     } catch (err: any) {
-      setError(parseError(err))
+      const msg = parseError(err)
+      setError(msg)
+      toast(msg, "error")
     } finally {
       setToggling(false)
     }

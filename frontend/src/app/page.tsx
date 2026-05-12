@@ -103,7 +103,7 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
 }
 
 export default function Home() {
-  const { getPublicEduPay, loading } = useMiniPay()
+  const { getPublicEduPay, loading, isMiniPay } = useMiniPay()
   const [courses, setCourses] = useState<Course[]>([])
   const [fetching, setFetching] = useState(true)
   const [totalLessons, setTotalLessons] = useState(0)
@@ -178,6 +178,23 @@ export default function Home() {
         }}
       >
         <motion.div style={{ y: heroY, opacity: heroOpacity, width: "100%", maxWidth: 800, margin: "0 auto" }}>
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 32, flexWrap: "wrap" }}
+          >
+            {isMiniPay && (
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: "#C4622D", border: "1px solid rgba(196,98,45,0.3)", padding: "5px 12px", borderRadius: 20 }}>
+                ⚡ MiniPay
+              </span>
+            )}
+            <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(13,11,8,0.35)", border: "1px solid rgba(13,11,8,0.1)", padding: "5px 12px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#FCFF52" }} />
+              Built on Celo
+            </span>
+          </motion.div>
+
           <motion.h1
             initial={{ opacity: 0, y: 44 }}
             animate={{ opacity: 1, y: 0 }}

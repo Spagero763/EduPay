@@ -4,6 +4,7 @@ import "./globals.css"
 import { Providers } from "./providers"
 import { Navbar } from "@/components/Navbar"
 import { MiniPayBanner } from "@/components/MiniPayBanner"
+import { BottomNav } from "@/components/BottomNav"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           <MiniPayBanner />
           {children}
+          <BottomNav />
         </Providers>
       </body>
     </html>

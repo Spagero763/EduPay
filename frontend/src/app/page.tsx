@@ -274,6 +274,44 @@ export default function Home() {
         </motion.div>
       </section>
 
+      {/* ── How it works ─────────────────────────────── */}
+      <section style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "96px 64px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <FadeUp>
+            <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.28em", marginBottom: 56, fontWeight: 500 }}>
+              How it works
+            </div>
+          </FadeUp>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "48px" }}>
+            {[
+              {
+                step: "01",
+                title: "Tutor publishes a course",
+                body: "Set a price per chapter. Your content is stored on-chain, accessible only to paying students.",
+              },
+              {
+                step: "02",
+                title: "Student pays one chapter",
+                body: "No subscription. No credit card. Students pay in cUSD or USDC directly from MiniPay — instantly.",
+              },
+              {
+                step: "03",
+                title: "Funds go straight to tutor",
+                body: "Every payment settles on Celo in seconds. No intermediaries, no monthly payouts, no delays.",
+              },
+            ].map((item, i) => (
+              <FadeUp key={i} delay={i * 0.12}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#C4622D", letterSpacing: "0.2em", marginBottom: 20 }}>{item.step}</div>
+                  <h3 style={{ fontSize: 18, fontWeight: 600, color: "#0D0B08", marginBottom: 12, lineHeight: 1.3, letterSpacing: "-0.01em" }}>{item.title}</h3>
+                  <p style={{ fontSize: 14, color: "rgba(13,11,8,0.45)", lineHeight: 1.75 }}>{item.body}</p>
+                </div>
+              </FadeUp>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Stats ────────────────────────────────────── */}
       <section style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "80px 64px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>

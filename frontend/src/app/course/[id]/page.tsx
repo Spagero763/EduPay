@@ -161,28 +161,24 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       }
       setCourse(nextCourse)
 
-      const list: Chapter[] = []
       const wallet = address?.toLowerCase()
       const tutor = nextCourse.tutor.toLowerCase()
       const isTutor = !!wallet && wallet === tutor
 
-      for (let i = 0; i < nextCourse.chapterCount; i++) {
-        const ch = await eduPay.getChapter(courseId, i)
-
-        let hasAccess = false
-        if (isTutor) {
-          hasAccess = true
-        } else if (wallet) {
-          hasAccess = await eduPay.checkAccess(courseId, i, wallet)
-        }
-
-        list.push({
-          id: i,
-          title: ch[0],
-          priceUSD6: ethers.BigNumber.from(ch[1]),
-          hasAccess,
+      const list: Chapter[] = await Promise.all(
+        Array.from({ length: nextCourse.chapterCount }, async (_, i) => {
+          const [ch, hasAccess] = await Promise.all([
+            eduPay.getChapter(courseId, i),
+            isTutor ? Promise.resolve(true) : wallet ? eduPay.checkAccess(courseId, i, wallet) : Promise.resolve(false),
+          ])
+          return {
+            id: i,
+            title: ch[0],
+            priceUSD6: ethers.BigNumber.from(ch[1]),
+            hasAccess,
+          }
         })
-      }
+      )
 
       setChapters(list)
     } catch (err: any) {

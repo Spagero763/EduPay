@@ -53,61 +53,59 @@ export default function Dashboard() {
     try {
       const eduPay = getEduPay()
 
-      // Tutor courses
+      // Tutor courses — fetch all in parallel
       const ids: number[] = await eduPay.getTutorCourses(address)
-      const courses: TutorCourse[] = []
+      const tutorRaw = await Promise.all(ids.map(id => eduPay.courses(id)))
       let earned = ethers.BigNumber.from(0)
-
-      for (const id of ids) {
-        const c = await eduPay.courses(id)
-        courses.push({
-          id: Number(id),
+      const courses: TutorCourse[] = tutorRaw.map((c, idx) => {
+        earned = earned.add(c.totalEarned)
+        return {
+          id: Number(ids[idx]),
           title: c.title,
           description: c.description,
           chapterCount: Number(c.chapterCount),
           totalEarned: c.totalEarned.toString(),
           isActive: c.isActive,
-        })
-        earned = earned.add(c.totalEarned)
-      }
+        }
+      })
       setTutorCourses(courses)
       setTotalEarned(ethers.utils.formatUnits(earned, 6))
 
-      // Student purchased chapters — scan all courses
-      const courseCount = await eduPay.courseCount()
-      const purchased: PurchasedChapter[] = []
-      const progress: CourseProgress[] = []
+      // Student purchased chapters — fetch all courses in parallel, then access checks in parallel
+      const courseCount = Number(await eduPay.courseCount())
+      const allCourses = await Promise.all(
+        Array.from({ length: courseCount }, (_, i) => eduPay.courses(i))
+      )
 
-      for (let cid = 0; cid < Number(courseCount); cid++) {
-        const c = await eduPay.courses(cid)
-        const total = Number(c.chapterCount)
-        if (total === 0) continue
-
-        let unlockedCount = 0
-        for (let chid = 0; chid < total; chid++) {
-          const has = await eduPay.checkAccess(cid, chid, address)
-          if (has) {
-            unlockedCount++
-            const ch = await eduPay.getChapter(cid, chid)
-            purchased.push({
+      const courseResults = await Promise.all(
+        allCourses.map(async (c, cid) => {
+          const total = Number(c.chapterCount)
+          if (total === 0) return null
+          const accessResults = await Promise.all(
+            Array.from({ length: total }, (_, chid) => eduPay.checkAccess(cid, chid, address))
+          )
+          const unlockedIds = accessResults.map((has, chid) => ({ has, chid })).filter(x => x.has)
+          if (unlockedIds.length === 0) return null
+          const chapters = await Promise.all(
+            unlockedIds.map(({ chid }) => eduPay.getChapter(cid, chid).then(ch => ({
               courseId: cid,
               courseTitle: c.title,
               chapterId: chid,
               chapterTitle: ch.title,
               price: ch.priceUSD.toString(),
-            })
-          }
-        }
+            })))
+          )
+          return { cid, title: c.title, unlocked: unlockedIds.length, total, chapters }
+        })
+      )
 
-        if (unlockedCount > 0) {
-          progress.push({
-            courseId: cid,
-            courseTitle: c.title,
-            unlockedCount,
-            totalChapters: total,
-          })
-        }
-      }
+      const purchased: PurchasedChapter[] = []
+      const progress: CourseProgress[] = []
+      courseResults.forEach(r => {
+        if (!r) return
+        purchased.push(...r.chapters)
+        progress.push({ courseId: r.cid, courseTitle: r.title, unlockedCount: r.unlocked, totalChapters: r.total })
+      })
 
       setPurchasedChapters(purchased)
       setContinueLearning(progress.filter(p => p.unlockedCount < p.totalChapters))

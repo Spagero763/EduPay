@@ -110,27 +110,27 @@ export default function StatsPage() {
       const count = Number(courseCount)
       const feePercent = Number(platformFeePercent)
 
+      const rawCourses = await Promise.all(
+        Array.from({ length: count }, (_, i) => contract.courses(i).catch(() => null))
+      )
       const courses: CourseStats[] = []
       const tutorSet = new Set<string>()
       let totalEarned6 = ethers.BigNumber.from(0)
       let totalLessons = 0
-
-      for (let i = 0; i < count; i++) {
-        try {
-          const c = await contract.courses(i)
-          courses.push({
-            id: i,
-            title: c.title,
-            tutor: c.tutor,
-            chapterCount: Number(c.chapterCount),
-            totalEarned: Number(c.totalEarned),
-            isActive: c.isActive,
-          })
-          tutorSet.add(c.tutor.toLowerCase())
-          totalEarned6 = totalEarned6.add(c.totalEarned)
-          totalLessons += Number(c.chapterCount)
-        } catch {}
-      }
+      rawCourses.forEach((c, i) => {
+        if (!c) return
+        courses.push({
+          id: i,
+          title: c.title,
+          tutor: c.tutor,
+          chapterCount: Number(c.chapterCount),
+          totalEarned: Number(c.totalEarned),
+          isActive: c.isActive,
+        })
+        tutorSet.add(c.tutor.toLowerCase())
+        totalEarned6 = totalEarned6.add(c.totalEarned)
+        totalLessons += Number(c.chapterCount)
+      })
 
       const activeCourses = courses.filter(c => c.isActive).length
       const topCourses = [...courses]

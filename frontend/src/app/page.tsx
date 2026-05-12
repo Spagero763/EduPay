@@ -128,12 +128,14 @@ export default function Home() {
       try {
         const eduPay = getPublicEduPay()
         const { ethers } = await import("ethers")
-        const count = await eduPay.courseCount()
-        const list: Course[] = []
+        const count = Number(await eduPay.courseCount())
+        const all = await Promise.all(
+          Array.from({ length: count }, (_, i) => eduPay.courses(i))
+        )
         let lessons = 0
         let volume = ethers.BigNumber.from(0)
-        for (let i = 0; i < Number(count); i++) {
-          const c = await eduPay.courses(i)
+        const list: Course[] = []
+        all.forEach((c, i) => {
           lessons += Number(c.chapterCount)
           volume = volume.add(c.totalEarned)
           if (c.isActive) {
@@ -146,7 +148,7 @@ export default function Home() {
               totalEarned: c.totalEarned.toString(),
             })
           }
-        }
+        })
         setCourses(list)
         setTotalLessons(lessons)
         setTotalVolume(Number(ethers.utils.formatUnits(volume, 6)).toFixed(2))

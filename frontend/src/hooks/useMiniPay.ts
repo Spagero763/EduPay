@@ -410,6 +410,13 @@ export function useMiniPay() {
     return tx.wait()
   }
 
+  async function toggleCourse(courseId: number) {
+    if (!signer) throw new Error("Wallet not connected")
+    const eduPay = getEduPay(true)
+    const tx = await eduPay.toggleCourse(courseId)
+    return tx.wait()
+  }
+
   return {
     isMiniPay,
     address: address ?? null,
@@ -433,5 +440,6 @@ export function useMiniPay() {
     getAddress,
     addChapter,
     updateChapter,
+    toggleCourse,
   }
 }

@@ -15,6 +15,7 @@ export const EDUPAY_ABI = [
   "function getFullCoursePrice(uint256 _courseId, address _student) external view returns (uint256 totalUSD)",
   "function courseCount() external view returns (uint256)",
   "function courses(uint256) external view returns (address tutor, string memory title, string memory description, bool isActive, uint256 chapterCount, uint256 totalEarned)",
+  "function toggleCourse(uint256 _courseId) external",
   "function tutorEarnings(address) external view returns (uint256)",
   "function platformFeePercent() external view returns (uint256)",
   "function CUSD() external view returns (address)",

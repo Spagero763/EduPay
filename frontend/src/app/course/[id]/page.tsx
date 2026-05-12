@@ -127,6 +127,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     purchaseChapter,
     purchaseFullCourse,
     getChapterContent,
+    toggleCourse,
   } = useMiniPay()
 
   const [course, setCourse] = useState<Course | null>(null)
@@ -137,6 +138,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [purchasingChapterId, setPurchasingChapterId] = useState<number | null>(null)
   const [buyingFullCourse, setBuyingFullCourse] = useState(false)
   const [addingChapter, setAddingChapter] = useState(false)
+  const [toggling, setToggling] = useState(false)
   const [error, setError] = useState("")
 
   const loadData = useCallback(async () => {
@@ -285,6 +287,20 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     }
   }
 
+  async function handleToggleCourse() {
+    if (!course) return
+    setError("")
+    setToggling(true)
+    try {
+      await toggleCourse(courseId)
+      await loadData()
+    } catch (err: any) {
+      setError(parseError(err))
+    } finally {
+      setToggling(false)
+    }
+  }
+
   if (!isValidCourseId) return <div className="state">Invalid course id</div>
   if (!course) return <div className="state">Loading...</div>
 
@@ -319,9 +335,24 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
           })()}
 
           {isTutor && (
-            <button className="ghost-btn" onClick={() => setAddingChapter(true)}>
-              + Add chapter
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4, flexWrap: "wrap" }}>
+              <button className="ghost-btn" onClick={() => setAddingChapter(true)}>
+                + Add chapter
+              </button>
+              <button
+                className="ghost-btn"
+                onClick={handleToggleCourse}
+                disabled={toggling}
+                style={{ opacity: course.isActive ? 1 : 0.6, borderColor: course.isActive ? "rgba(196,98,45,0.3)" : "rgba(32,26,20,0.2)" }}
+              >
+                {toggling ? "Updating..." : course.isActive ? "Deactivate course" : "Reactivate course"}
+              </button>
+              {!course.isActive && (
+                <span style={{ fontSize: 11, color: "#8a3d17", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                  ⚠ Hidden from listing
+                </span>
+              )}
+            </div>
           )}
         </header>
 

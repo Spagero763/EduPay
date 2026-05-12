@@ -11,17 +11,31 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
 export const metadata: Metadata = {
   title: "EduPay - Learn & Earn on Celo",
-  description: "Pay-per-lesson education platform built on Celo and MiniPay",
+  description: "Pay-per-chapter education on Celo. Students pay tutors directly in cUSD — no banks, no middlemen. Built for Africa with MiniPay.",
+  openGraph: {
+    title: "EduPay — Pay-per-lesson on Celo",
+    description: "Buy chapters one at a time. Pay tutors instantly in cUSD. Works in MiniPay.",
+    url: "https://edu-pay-one.vercel.app",
+    siteName: "EduPay",
+    images: [{ url: "https://edu-pay-one.vercel.app/og.png", width: 1200, height: 630 }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "EduPay — Pay-per-lesson on Celo",
+    description: "Buy chapters one at a time. Pay tutors instantly in cUSD.",
+    images: ["https://edu-pay-one.vercel.app/og.png"],
+  },
   other: {
     "talentapp:project_verification": "a39cb1ae17e967a401b06baf0f6d31acb2326952abe3fcbef47a30d01afb22fe2c4f0edaacb57e3e9a2a843c860d49bfc2563ff8fc4f875dc1993192f261097f",
     "fc:frame": "vNext",
-    "fc:frame:image": "https://edupay.vercel.app/og.png",
+    "fc:frame:image": "https://edu-pay-one.vercel.app/og.png",
     "fc:frame:button:1": "Browse Courses",
     "fc:frame:button:1:action": "link",
-    "fc:frame:button:1:target": "https://edupay.vercel.app",
-    "fc:frame:button:2": "Create Course",
+    "fc:frame:button:1:target": "https://edu-pay-one.vercel.app",
+    "fc:frame:button:2": "Start Teaching",
     "fc:frame:button:2:action": "link",
-    "fc:frame:button:2:target": "https://edupay.vercel.app/create",
+    "fc:frame:button:2:target": "https://edu-pay-one.vercel.app/create",
   },
 }
 

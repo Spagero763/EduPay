@@ -434,7 +434,14 @@ export default function Home() {
       {/* ── Footer ───────────────────────────────────── */}
       <footer style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "32px 64px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ color: "rgba(13,11,8,0.3)", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.18em" }}>EduPay</span>
+          <svg width="82" height="22" viewBox="0 0 136 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="EduPay">
+            <circle cx="20" cy="20" r="18" fill="rgba(13,11,8,0.2)"/>
+            <rect x="12" y="12" width="3" height="16" fill="rgba(242,236,226,0.6)"/>
+            <rect x="12" y="12" width="14" height="3" fill="rgba(242,236,226,0.6)"/>
+            <rect x="12" y="18.5" width="10" height="3" fill="rgba(242,236,226,0.6)"/>
+            <rect x="12" y="25" width="14" height="3" fill="rgba(242,236,226,0.6)"/>
+            <text x="46" y="28" fontFamily="Inter, system-ui, sans-serif" fontSize="21" fontWeight="700" letterSpacing="-0.5" fill="rgba(13,11,8,0.3)">EduPay</text>
+          </svg>
           <span style={{ color: "rgba(13,11,8,0.18)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.2em" }}>2026</span>
           
           <a  href="https://celoscan.io/address/0xDBA56f8d23c69Dbd9659be4ca18133962BC86191"

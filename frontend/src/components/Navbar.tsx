@@ -32,8 +32,17 @@ export function Navbar() {
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <div className="max-w-7xl mx-auto px-8 md:px-16 py-5 flex items-center justify-between">
-          <Link href="/" className="text-[#0D0B08] font-semibold text-sm tracking-widest uppercase">
-            EduPay
+          <Link href="/" aria-label="EduPay home">
+            <svg width="102" height="28" viewBox="0 0 136 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="20" cy="20" r="18" fill="#C4622D"/>
+              <rect x="12" y="12" width="3" height="16" fill="#F2ECE2"/>
+              <rect x="12" y="12" width="14" height="3" fill="#F2ECE2"/>
+              <rect x="12" y="18.5" width="10" height="3" fill="#F2ECE2"/>
+              <rect x="12" y="25" width="14" height="3" fill="#F2ECE2"/>
+              <text x="46" y="28" fontFamily="Inter, system-ui, sans-serif" fontSize="21" fontWeight="700" letterSpacing="-0.5">
+                <tspan fill="#0D0B08">Edu</tspan><tspan fill="#C4622D">Pay</tspan>
+              </text>
+            </svg>
           </Link>
 
           <div className="hidden md:flex items-center gap-10">

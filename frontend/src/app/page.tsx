@@ -30,9 +30,12 @@ function FadeUp({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   )
 }
 
+const CARD_ACCENTS = ["#C4622D", "#2D7CC4", "#2DC47A", "#C4A62D", "#7C2DC4", "#2DC4B8"]
+
 function CourseCard({ course, index }: { course: Course; index: number }) {
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: "-30px" })
+  const accent = CARD_ACCENTS[course.id % CARD_ACCENTS.length]
 
   return (
     <motion.div
@@ -41,39 +44,57 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.7, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
     >
-      <Link href={`/course/${course.id}`}>
+      <Link href={`/course/${course.id}`} style={{ textDecoration: "none" }}>
         <div
-          className="group"
           style={{
             borderTop: "1px solid rgba(13,11,8,0.09)",
-            padding: "40px 0",
+            padding: "32px 0",
             display: "flex",
             alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "48px",
+            gap: "24px",
             cursor: "pointer",
+            transition: "background 0.2s",
           }}
         >
+          {/* Color accent bar + index */}
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 2 }}>
+            <div style={{ width: 3, height: 40, background: accent, borderRadius: 2, opacity: 0.7 }} />
+            <span style={{ fontSize: 10, color: "rgba(13,11,8,0.2)", fontVariantNumeric: "tabular-nums", letterSpacing: "0.06em" }}>
+              {String(index + 1).padStart(2, "0")}
+            </span>
+          </div>
+
+          {/* Main content */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.22em", fontWeight: 500 }}>
-              {course.chapterCount} {course.chapterCount === 1 ? "lesson" : "lessons"}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+              <span style={{
+                fontSize: 9, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase",
+                color: accent, background: `${accent}18`, padding: "3px 8px", borderRadius: 2,
+              }}>
+                {course.chapterCount} {course.chapterCount === 1 ? "lesson" : "lessons"}
+              </span>
+              {Number(course.totalEarned) > 0 && (
+                <span style={{ fontSize: 9, color: "rgba(13,11,8,0.3)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                  · {formatPrice(course.totalEarned)} USDC earned
+                </span>
+              )}
             </div>
-            <h3 style={{ fontSize: 20, fontWeight: 500, color: "rgba(13,11,8,0.85)", marginBottom: 12, lineHeight: 1.3 }}>
+            <h3 style={{ fontSize: 19, fontWeight: 600, color: "#0D0B08", marginBottom: 10, lineHeight: 1.3, letterSpacing: "-0.01em" }}>
               {course.title}
             </h3>
-            <p style={{ fontSize: 14, color: "rgba(13,11,8,0.38)", lineHeight: 1.7, maxWidth: 480 }} className="line-clamp-2">
+            <p style={{ fontSize: 13, color: "rgba(13,11,8,0.42)", lineHeight: 1.7, maxWidth: 540 }} className="line-clamp-2">
               {course.description}
             </p>
+            <div style={{ marginTop: 14, fontSize: 11, color: "rgba(13,11,8,0.28)", fontFamily: "monospace", letterSpacing: "0.04em" }}>
+              by {course.tutor.slice(0, 6)}…{course.tutor.slice(-4)}
+            </div>
           </div>
-          <div style={{ textAlign: "right", flexShrink: 0, paddingTop: 4 }}>
-            <div style={{ fontSize: 10, color: "rgba(13,11,8,0.22)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.18em" }}>Tutor</div>
-            <div style={{ fontSize: 12, color: "rgba(13,11,8,0.38)", fontFamily: "monospace" }}>
-              {course.tutor.slice(0, 6)}...{course.tutor.slice(-4)}
-            </div>
-            <div style={{ marginTop: 16, color: "#C4622D", fontSize: 14, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
-              {formatPrice(course.totalEarned)}
-              <span style={{ color: "rgba(196,98,45,0.4)", fontSize: 11, marginLeft: 4 }}>USDC</span>
-            </div>
+
+          {/* Arrow */}
+          <div style={{ flexShrink: 0, paddingTop: 6, opacity: 0.2 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8h10M8 3l5 5-5 5" stroke="#0D0B08" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
         </div>
       </Link>

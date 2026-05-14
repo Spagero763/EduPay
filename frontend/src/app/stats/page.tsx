@@ -347,184 +347,158 @@ export default function StatsPage() {
           ))}
         </motion.div>
 
-        {/* Two-column: Top Courses + Recent Activity */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80 }}>
-
-          {/* Top Courses */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-          >
-            <div style={{ ...label, marginBottom: 32 }}>Top courses by earnings</div>
-
-            {loading ? (
-              <div>
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} style={{ borderTop: "1px solid rgba(13,11,8,0.07)", padding: "20px 0", display: "flex", justifyContent: "space-between" }}>
-                    <div style={{ height: 14, width: 160, background: "rgba(13,11,8,0.05)", borderRadius: 4 }} />
-                    <div style={{ height: 14, width: 60, background: "rgba(13,11,8,0.05)", borderRadius: 4 }} />
-                  </div>
-                ))}
-              </div>
-            ) : stats && stats.topCourses.length > 0 ? (
-              <div>
-                {stats.topCourses.map((course, i) => (
-                  <Link key={course.id} href={`/course/${course.id}`} style={{ textDecoration: "none" }}>
-                    <div
-                      style={{
-                        borderTop: "1px solid rgba(13,11,8,0.07)",
-                        padding: "20px 0",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 16,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <div style={{ fontSize: 11, color: "rgba(13,11,8,0.18)", fontVariantNumeric: "tabular-nums", width: 20, flexShrink: 0, fontWeight: 600 }}>
-                        {(i + 1).toString().padStart(2, "0")}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 500,
-                            color: "#0D0B08",
-                            letterSpacing: "-0.005em",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            marginBottom: 4,
-                          }}
-                        >
-                          {course.title}
-                        </div>
-                        <div style={{ fontSize: 10, color: "rgba(13,11,8,0.22)", fontFamily: "monospace" }}>
-                          {course.tutor.slice(0, 8)}... · {course.chapterCount} {course.chapterCount === 1 ? "lesson" : "lessons"}
-                        </div>
-                      </div>
-                      <div style={{ flexShrink: 0, textAlign: "right" }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: "#C4622D", fontVariantNumeric: "tabular-nums" }}>
-                          ${(course.totalEarned / 1_000_000).toFixed(2)}
-                        </div>
-                        <div style={{ fontSize: 9, color: "rgba(13,11,8,0.22)", textTransform: "uppercase", letterSpacing: "0.15em", marginTop: 2 }}>
-                          earned
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-                <div style={{ borderTop: "1px solid rgba(13,11,8,0.07)" }} />
-                <div style={{ paddingTop: 20 }}>
-                  <Link
-                    href="/#courses"
-                    style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.18em", textDecoration: "none", borderBottom: "1px solid rgba(13,11,8,0.1)", paddingBottom: 2 }}
-                  >
-                    View all courses →
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div style={{ borderTop: "1px solid rgba(13,11,8,0.07)", padding: "40px 0", color: "rgba(13,11,8,0.2)", fontSize: 13, fontWeight: 300 }}>
-                No courses yet
-              </div>
+        {/* Recent Activity — full width */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+          style={{ marginBottom: 80 }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
+            <div style={{ ...label }}>Recent purchases</div>
+            {stats?.eventsLoaded && (
+              <a href={`${CELOSCAN}/address/${EDUPAY_ADDRESS}#events`} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.18em", borderBottom: "1px solid rgba(13,11,8,0.1)", paddingBottom: 1 }}>
+                View all on Celoscan ↗
+              </a>
             )}
-          </motion.div>
+          </div>
 
-          {/* Recent Activity */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.25 }}
-          >
-            <div style={{ ...label, marginBottom: 32 }}>Recent purchases</div>
-
-            {loading ? (
-              <div>
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} style={{ borderTop: "1px solid rgba(13,11,8,0.07)", padding: "20px 0" }}>
-                    <div style={{ height: 12, width: 140, background: "rgba(13,11,8,0.05)", borderRadius: 4, marginBottom: 8 }} />
-                    <div style={{ height: 10, width: 80, background: "rgba(13,11,8,0.04)", borderRadius: 4 }} />
-                  </div>
-                ))}
-              </div>
-            ) : !stats?.eventsLoaded ? (
-              <div style={{ borderTop: "1px solid rgba(13,11,8,0.07)", padding: "40px 0", color: "rgba(13,11,8,0.2)", fontSize: 13, fontWeight: 300 }}>
-                Activity data unavailable.{" "}
-                <a href={`${CELOSCAN}/address/${EDUPAY_ADDRESS}#events`} target="_blank" rel="noopener noreferrer" style={{ color: "#C4622D", textDecoration: "none" }}>
-                  View on Celoscan ↗
-                </a>
-              </div>
-            ) : stats.recentActivity.length === 0 ? (
-              <div style={{ borderTop: "1px solid rgba(13,11,8,0.07)", padding: "40px 0", color: "rgba(13,11,8,0.2)", fontSize: 13, fontWeight: 300 }}>
-                No purchases yet
-              </div>
-            ) : (
-              <div>
-                {stats.recentActivity.map((evt, i) => (
-                  <div
-                    key={`${evt.txHash}-${i}`}
-                    style={{
-                      borderTop: "1px solid rgba(13,11,8,0.07)",
-                      padding: "18px 0",
-                      display: "flex",
-                      alignItems: "flex-start",
-                      justifyContent: "space-between",
-                      gap: 16,
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 500,
-                          color: "#0D0B08",
-                          marginBottom: 4,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
+          {loading ? (
+            <div>
+              {[...Array(4)].map((_, i) => (
+                <div key={i} style={{ borderTop: "1px solid rgba(13,11,8,0.07)", padding: "20px 0", display: "flex", gap: 16, alignItems: "center" }}>
+                  <div style={{ height: 12, width: "40%", background: "rgba(13,11,8,0.05)", borderRadius: 4 }} />
+                  <div style={{ height: 12, width: "20%", background: "rgba(13,11,8,0.04)", borderRadius: 4 }} />
+                  <div style={{ marginLeft: "auto", height: 12, width: 60, background: "rgba(13,11,8,0.05)", borderRadius: 4 }} />
+                </div>
+              ))}
+            </div>
+          ) : !stats?.eventsLoaded ? (
+            <div style={{ borderTop: "1px solid rgba(13,11,8,0.07)", padding: "48px 0", textAlign: "center" }}>
+              <p style={{ color: "rgba(13,11,8,0.2)", fontSize: 13, fontWeight: 300, marginBottom: 12 }}>Activity data unavailable</p>
+              <a href={`${CELOSCAN}/address/${EDUPAY_ADDRESS}#events`} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 11, color: "#C4622D", textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.16em" }}>
+                View on Celoscan ↗
+              </a>
+            </div>
+          ) : stats.recentActivity.length === 0 ? (
+            <div style={{ borderTop: "1px solid rgba(13,11,8,0.07)", padding: "48px 0", textAlign: "center", color: "rgba(13,11,8,0.2)", fontSize: 13, fontWeight: 300 }}>
+              No purchases yet
+            </div>
+          ) : (
+            <div>
+              {stats.recentActivity.map((evt, i) => (
+                <a
+                  key={`${evt.txHash}-${i}`}
+                  href={`${CELOSCAN}/tx/${evt.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "none", display: "block" }}
+                >
+                  <div style={{
+                    borderTop: "1px solid rgba(13,11,8,0.07)",
+                    padding: "16px 0",
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto auto auto",
+                    alignItems: "center",
+                    gap: 24,
+                  }}>
+                    {/* Course title + student */}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: "#0D0B08", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {evt.courseTitle}
                       </div>
-                      <div style={{ fontSize: 10, color: "rgba(13,11,8,0.22)", fontFamily: "monospace" }}>
-                        {evt.student.slice(0, 8)}...{evt.student.slice(-4)}
-                        <span style={{ marginLeft: 8, fontFamily: "inherit", letterSpacing: "0.1em" }}>
-                          {evt.type === "full" ? "Full course" : "Chapter"}
-                        </span>
+                      <div style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", fontFamily: "monospace" }}>
+                        {evt.student.slice(0, 10)}...{evt.student.slice(-4)}
                       </div>
                     </div>
-                    <div style={{ flexShrink: 0, textAlign: "right" }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#C4622D", fontVariantNumeric: "tabular-nums", marginBottom: 4 }}>
-                        ${evt.amount}
+                    {/* Type badge */}
+                    <span style={{
+                      fontSize: 9, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase",
+                      padding: "4px 10px", borderRadius: 2, flexShrink: 0,
+                      background: evt.type === "full" ? "rgba(196,98,45,0.1)" : "rgba(13,11,8,0.06)",
+                      color: evt.type === "full" ? "#C4622D" : "rgba(13,11,8,0.45)",
+                    }}>
+                      {evt.type === "full" ? "Full course" : "Chapter"}
+                    </span>
+                    {/* Amount */}
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#C4622D", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                      ${evt.amount}
+                    </div>
+                    {/* Tx link arrow */}
+                    <div style={{ fontSize: 10, color: "rgba(13,11,8,0.2)", flexShrink: 0 }}>↗</div>
+                  </div>
+                </a>
+              ))}
+              <div style={{ borderTop: "1px solid rgba(13,11,8,0.07)" }} />
+            </div>
+          )}
+        </motion.div>
+
+        {/* Top Courses — full width */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.3 }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
+            <div style={{ ...label }}>Top courses by earnings</div>
+            <Link href="/#courses" style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.18em", borderBottom: "1px solid rgba(13,11,8,0.1)", paddingBottom: 1 }}>
+              Browse all →
+            </Link>
+          </div>
+
+          {loading ? (
+            <div>
+              {[...Array(4)].map((_, i) => (
+                <div key={i} style={{ borderTop: "1px solid rgba(13,11,8,0.07)", padding: "20px 0", display: "flex", gap: 16, alignItems: "center" }}>
+                  <div style={{ height: 14, width: "50%", background: "rgba(13,11,8,0.05)", borderRadius: 4 }} />
+                  <div style={{ marginLeft: "auto", height: 14, width: 60, background: "rgba(13,11,8,0.05)", borderRadius: 4 }} />
+                </div>
+              ))}
+            </div>
+          ) : stats && stats.topCourses.length > 0 ? (
+            <div>
+              {stats.topCourses.map((course, i) => (
+                <Link key={course.id} href={`/course/${course.id}`} style={{ textDecoration: "none", display: "block" }}>
+                  <div style={{
+                    borderTop: "1px solid rgba(13,11,8,0.07)",
+                    padding: "18px 0",
+                    display: "grid",
+                    gridTemplateColumns: "28px 1fr auto",
+                    alignItems: "center",
+                    gap: 20,
+                  }}>
+                    <div style={{ fontSize: 11, color: "rgba(13,11,8,0.18)", fontVariantNumeric: "tabular-nums", fontWeight: 700, letterSpacing: "0.04em" }}>
+                      {(i + 1).toString().padStart(2, "0")}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: "#0D0B08", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "-0.005em" }}>
+                        {course.title}
                       </div>
-                      <a
-                        href={`${CELOSCAN}/tx/${evt.txHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontSize: 9, color: "rgba(13,11,8,0.2)", textDecoration: "none", letterSpacing: "0.1em", textTransform: "uppercase" }}
-                        onClick={e => e.stopPropagation()}
-                      >
-                        Tx ↗
-                      </a>
+                      <div style={{ fontSize: 10, color: "rgba(13,11,8,0.25)", fontFamily: "monospace" }}>
+                        {course.tutor.slice(0, 10)}... · {course.chapterCount} {course.chapterCount === 1 ? "lesson" : "lessons"}
+                        {!course.isActive && <span style={{ marginLeft: 8, color: "rgba(13,11,8,0.2)" }}>· Inactive</span>}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#C4622D", fontVariantNumeric: "tabular-nums" }}>
+                        ${(course.totalEarned / 1_000_000).toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: 9, color: "rgba(13,11,8,0.22)", textTransform: "uppercase", letterSpacing: "0.15em", marginTop: 2 }}>earned</div>
                     </div>
                   </div>
-                ))}
-                <div style={{ borderTop: "1px solid rgba(13,11,8,0.07)" }} />
-                <div style={{ paddingTop: 20 }}>
-                  <a
-                    href={`${CELOSCAN}/address/${EDUPAY_ADDRESS}#events`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: 10, color: "rgba(13,11,8,0.28)", textTransform: "uppercase", letterSpacing: "0.18em", textDecoration: "none", borderBottom: "1px solid rgba(13,11,8,0.1)", paddingBottom: 2 }}
-                  >
-                    All events on Celoscan ↗
-                  </a>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </div>
+                </Link>
+              ))}
+              <div style={{ borderTop: "1px solid rgba(13,11,8,0.07)" }} />
+            </div>
+          ) : (
+            <div style={{ borderTop: "1px solid rgba(13,11,8,0.07)", padding: "48px 0", textAlign: "center", color: "rgba(13,11,8,0.2)", fontSize: 13, fontWeight: 300 }}>
+              No courses yet
+            </div>
+          )}
+        </motion.div>
 
         {/* Footer */}
         <motion.div

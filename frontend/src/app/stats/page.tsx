@@ -156,6 +156,12 @@ export default function StatsPage() {
         const allEvents: PurchaseEvent[] = []
         const courseMap = new Map(courses.map(c => [c.id, c.title]))
 
+        const cusdAddr = "0x765de816845861e75a25fca122bb6898b8b1282a"
+        function fmtAmount(raw: ethers.BigNumber, tokenAddr: string): string {
+          const decimals = tokenAddr.toLowerCase() === cusdAddr ? 18 : 6
+          return Number(ethers.utils.formatUnits(raw, decimals)).toFixed(2)
+        }
+
         for (const log of chapterLogs) {
           const args = log.args!
           studentSet.add((args.student as string).toLowerCase())
@@ -165,7 +171,7 @@ export default function StatsPage() {
             courseTitle: courseMap.get(Number(args.courseId)) ?? `Course #${args.courseId}`,
             type: "chapter",
             student: args.student as string,
-            amount: Number(ethers.utils.formatUnits(args.amountPaid as ethers.BigNumber, 6)).toFixed(2),
+            amount: fmtAmount(args.amountPaid as ethers.BigNumber, args.token as string),
             blockNumber: log.blockNumber,
           })
         }
@@ -179,7 +185,7 @@ export default function StatsPage() {
             courseTitle: courseMap.get(Number(args.courseId)) ?? `Course #${args.courseId}`,
             type: "full",
             student: args.student as string,
-            amount: Number(ethers.utils.formatUnits(args.totalPaid as ethers.BigNumber, 6)).toFixed(2),
+            amount: fmtAmount(args.totalPaid as ethers.BigNumber, args.token as string),
             blockNumber: log.blockNumber,
           })
         }

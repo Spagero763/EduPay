@@ -28,6 +28,8 @@ export function formatTokenAmount(
   try {
     const value = Number(ethers.utils.formatUnits(rawAmount, decimals))
     if (!Number.isFinite(value)) return "0.00"
+    // Show more decimal places for small values so users aren't misled
+    if (fractionDigits === 2 && value > 0 && value < 0.10) return value.toFixed(4)
     return value.toFixed(fractionDigits)
   } catch {
     return "0.00"

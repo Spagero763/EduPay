@@ -181,6 +181,15 @@ export function useMiniPay() {
     const tokenAddress = token === "USDC" ? USDC_ADDRESS : CUSD_ADDRESS
     const requiredAmount = toTokenAmount(priceIn6, token)
 
+    // Pre-check balance before attempting approval/transfer
+    const balance: ethers.BigNumber = await tokenContract.balanceOf(signerAddress)
+    if (balance.lt(requiredAmount)) {
+      const decimals = token === "USDC" ? 6 : 18
+      const have = Number(ethers.utils.formatUnits(balance, decimals)).toFixed(4)
+      const need = Number(ethers.utils.formatUnits(requiredAmount, decimals)).toFixed(4)
+      throw new Error(`Insufficient ${token} balance. You have ${have} but need ${need} ${token}.`)
+    }
+
     const allowance: ethers.BigNumber = await tokenContract.allowance(
       signerAddress,
       EDUPAY_ADDRESS

@@ -32,6 +32,22 @@ function FadeUp({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
 
 const CARD_ACCENTS = ["#C4622D", "#2D7CC4", "#2DC47A", "#C4A62D", "#7C2DC4", "#2DC4B8"]
 
+const CATEGORIES: { label: string; keywords: string[] }[] = [
+  { label: "Blockchain", keywords: ["solidity", "smart contract", "web3", "defi", "celo", "blockchain", "nft", "crypto", "wallet", "token"] },
+  { label: "Programming", keywords: ["javascript", "python", "react", "node", "typescript", "fullstack", "frontend", "backend", "coding", "software", "developer", "app", "api", "html", "css", "ai", "machine learning", "data"] },
+  { label: "Finance", keywords: ["finance", "money", "invest", "trading", "budget", "accounting", "business", "economics", "stock", "forex"] },
+  { label: "Design", keywords: ["design", "ui", "ux", "figma", "graphic", "brand", "illustration", "photoshop", "canva"] },
+  { label: "Language", keywords: ["english", "french", "spanish", "arabic", "yoruba", "igbo", "hausa", "language", "writing", "grammar"] },
+]
+
+function getCourseCategory(title: string, description: string): string {
+  const text = (title + " " + description).toLowerCase()
+  for (const cat of CATEGORIES) {
+    if (cat.keywords.some(kw => text.includes(kw))) return cat.label
+  }
+  return "General"
+}
+
 function CourseCard({ course, index }: { course: Course; index: number }) {
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: "-30px" })
@@ -66,18 +82,18 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
 
           {/* Main content */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+              {/* Category tag */}
               <span style={{
                 fontSize: 9, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase",
                 color: accent, background: `${accent}18`, padding: "3px 8px", borderRadius: 2,
               }}>
+                {getCourseCategory(course.title, course.description)}
+              </span>
+              {/* Chapter count */}
+              <span style={{ fontSize: 9, color: "rgba(13,11,8,0.3)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
                 {course.chapterCount} {course.chapterCount === 1 ? "lesson" : "lessons"}
               </span>
-              {Number(course.totalEarned) > 0 && (
-                <span style={{ fontSize: 9, color: "rgba(13,11,8,0.3)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                  · {formatPrice(course.totalEarned)} USDC earned
-                </span>
-              )}
             </div>
             <h3 style={{ fontSize: 19, fontWeight: 600, color: "#0D0B08", marginBottom: 10, lineHeight: 1.3, letterSpacing: "-0.01em" }}>
               {course.title}
@@ -85,8 +101,15 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
             <p style={{ fontSize: 13, color: "rgba(13,11,8,0.42)", lineHeight: 1.7, maxWidth: 540 }} className="line-clamp-2">
               {course.description}
             </p>
-            <div style={{ marginTop: 14, fontSize: 11, color: "rgba(13,11,8,0.28)", fontFamily: "monospace", letterSpacing: "0.04em" }}>
-              by {course.tutor.slice(0, 6)}…{course.tutor.slice(-4)}
+            <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, color: "rgba(13,11,8,0.28)", fontFamily: "monospace", letterSpacing: "0.04em" }}>
+                by {course.tutor.slice(0, 6)}…{course.tutor.slice(-4)}
+              </span>
+              {Number(course.totalEarned) > 0 && (
+                <span style={{ fontSize: 11, color: "#C4622D", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                  ${formatPrice(course.totalEarned)} earned
+                </span>
+              )}
             </div>
           </div>
 
@@ -109,13 +132,19 @@ export default function Home() {
   const [totalLessons, setTotalLessons] = useState(0)
   const [totalVolume, setTotalVolume] = useState("0")
   const [search, setSearch] = useState("")
+  const [activeCategory, setActiveCategory] = useState("All")
 
-  const filteredCourses = search.trim()
-    ? courses.filter(c =>
-        c.title.toLowerCase().includes(search.toLowerCase()) ||
-        c.description.toLowerCase().includes(search.toLowerCase())
-      )
-    : courses
+  const courseCategories = courses.map(c => getCourseCategory(c.title, c.description))
+  const availableCategories = ["All", ...Array.from(new Set(courseCategories)).sort()]
+
+  const filteredCourses = courses.filter(c => {
+    const matchSearch = !search.trim() ||
+      c.title.toLowerCase().includes(search.toLowerCase()) ||
+      c.description.toLowerCase().includes(search.toLowerCase())
+    const matchCategory = activeCategory === "All" ||
+      getCourseCategory(c.title, c.description) === activeCategory
+    return matchSearch && matchCategory
+  })
 
   const heroRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] })
@@ -394,7 +423,7 @@ export default function Home() {
                   type="text"
                   placeholder="Search courses..."
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  onChange={e => { setSearch(e.target.value); setActiveCategory("All") }}
                   style={{
                     width: "100%",
                     padding: "14px 48px 14px 20px",
@@ -431,6 +460,39 @@ export default function Home() {
               </div>
             )}
           </FadeUp>
+
+          {/* Category filter tabs */}
+          {!fetching && availableCategories.length > 1 && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 32, flexWrap: "wrap" }}>
+              {availableCategories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: activeCategory === cat ? 600 : 400,
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    padding: "8px 16px",
+                    border: activeCategory === cat ? "1px solid #0D0B08" : "1px solid rgba(13,11,8,0.12)",
+                    background: activeCategory === cat ? "#0D0B08" : "transparent",
+                    color: activeCategory === cat ? "#F2ECE2" : "rgba(13,11,8,0.45)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    borderRadius: 2,
+                    transition: "all 0.18s",
+                  }}
+                >
+                  {cat}
+                  {cat !== "All" && (
+                    <span style={{ marginLeft: 6, opacity: 0.5 }}>
+                      {courseCategories.filter(c => c === cat).length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
           {fetching ? (
             <div>

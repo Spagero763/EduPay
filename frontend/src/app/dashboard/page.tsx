@@ -407,50 +407,55 @@ export default function Dashboard() {
                       Browse courses
                     </Link>
                   </div>
-                ) : (
-                  <div>
-                    {purchasedChapters.map((ch, i) => (
-                      <motion.div
-                        key={`${ch.courseId}-${ch.chapterId}`}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: i * 0.07 }}
-                      >
-                        <Link href={`/course/${ch.courseId}`} style={{ textDecoration: "none" }}>
-                          <div
-                            style={{
-                              borderTop: "1px solid rgba(13,11,8,0.08)",
-                              padding: "28px 0",
-                              display: "flex",
-                              alignItems: "flex-start",
-                              justifyContent: "space-between",
-                              gap: 32,
-                              cursor: "pointer",
-                            }}
-                          >
-                            <div style={{ flex: 1 }}>
-                              <div style={{ ...labelStyle, marginBottom: 10 }}>
-                                {ch.courseTitle} · Chapter {ch.chapterId + 1}
-                              </div>
-                              <h3 style={{ fontSize: 16, fontWeight: 500, color: "#0D0B08", lineHeight: 1.3 }}>
-                                {ch.chapterTitle}
+                ) : (() => {
+                  // Group chapters by course
+                  const groups = purchasedChapters.reduce<Record<number, { courseTitle: string; chapters: PurchasedChapter[] }>>((acc, ch) => {
+                    if (!acc[ch.courseId]) acc[ch.courseId] = { courseTitle: ch.courseTitle, chapters: [] }
+                    acc[ch.courseId].chapters.push(ch)
+                    return acc
+                  }, {})
+                  const groupList = Object.entries(groups).map(([id, g]) => ({ courseId: Number(id), ...g }))
+                  return (
+                    <div>
+                      {groupList.map((group, gi) => (
+                        <motion.div
+                          key={group.courseId}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5, delay: gi * 0.07 }}
+                          style={{ borderTop: "1px solid rgba(13,11,8,0.08)", paddingTop: 28, marginBottom: 8 }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                            <Link href={`/course/${group.courseId}`} style={{ textDecoration: "none" }}>
+                              <h3 style={{ fontSize: 15, fontWeight: 600, color: "#0D0B08", margin: 0, lineHeight: 1.3 }}>
+                                {group.courseTitle}
                               </h3>
-                            </div>
-                            <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 16, paddingTop: 2 }}>
-                              <div style={{ fontSize: 10, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 500 }}>
-                                Unlocked
-                              </div>
-                              <div style={{ fontSize: 13, color: "rgba(13,11,8,0.3)", fontVariantNumeric: "tabular-nums" }}>
-                                {formatPrice(ch.price)} USDC
-                              </div>
+                            </Link>
+                            <div style={{ fontSize: 10, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 500 }}>
+                              {group.chapters.length} {group.chapters.length === 1 ? "chapter" : "chapters"} unlocked
                             </div>
                           </div>
-                        </Link>
-                      </motion.div>
-                    ))}
-                    <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)" }} />
-                  </div>
-                )}
+                          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                            {group.chapters.map(ch => (
+                              <Link key={ch.chapterId} href={`/course/${ch.courseId}`} style={{ textDecoration: "none" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "rgba(13,11,8,0.02)", gap: 16 }}>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <span style={{ ...labelStyle, marginRight: 10 }}>Ch {ch.chapterId + 1}</span>
+                                    <span style={{ fontSize: 13, color: "#0D0B08", fontWeight: 400 }}>{ch.chapterTitle}</span>
+                                  </div>
+                                  <div style={{ fontSize: 12, color: "rgba(13,11,8,0.3)", flexShrink: 0 }}>
+                                    ${formatPrice(ch.price)}
+                                  </div>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        </motion.div>
+                      ))}
+                      <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)", marginTop: 8 }} />
+                    </div>
+                  )
+                })()}
               </motion.div>
             )}
           </>

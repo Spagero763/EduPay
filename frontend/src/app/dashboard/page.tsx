@@ -417,41 +417,60 @@ export default function Dashboard() {
                   const groupList = Object.entries(groups).map(([id, g]) => ({ courseId: Number(id), ...g }))
                   return (
                     <div>
-                      {groupList.map((group, gi) => (
-                        <motion.div
-                          key={group.courseId}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.5, delay: gi * 0.07 }}
-                          style={{ borderTop: "1px solid rgba(13,11,8,0.08)", paddingTop: 28, marginBottom: 8 }}
-                        >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                            <Link href={`/course/${group.courseId}`} style={{ textDecoration: "none" }}>
-                              <h3 style={{ fontSize: 15, fontWeight: 600, color: "#0D0B08", margin: 0, lineHeight: 1.3 }}>
-                                {group.courseTitle}
-                              </h3>
-                            </Link>
-                            <div style={{ fontSize: 10, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 500 }}>
-                              {group.chapters.length} {group.chapters.length === 1 ? "chapter" : "chapters"} unlocked
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                            {group.chapters.map(ch => (
-                              <Link key={ch.chapterId} href={`/course/${ch.courseId}`} style={{ textDecoration: "none" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "rgba(13,11,8,0.02)", gap: 16 }}>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <span style={{ ...labelStyle, marginRight: 10 }}>Ch {ch.chapterId + 1}</span>
-                                    <span style={{ fontSize: 13, color: "#0D0B08", fontWeight: 400 }}>{ch.chapterTitle}</span>
-                                  </div>
-                                  <div style={{ fontSize: 12, color: "rgba(13,11,8,0.3)", flexShrink: 0 }}>
-                                    ${formatPrice(ch.price)}
-                                  </div>
-                                </div>
+                      {groupList.map((group, gi) => {
+                        const prog = continueLearning.find(p => p.courseId === group.courseId)
+                        const totalChapters = prog?.totalChapters ?? group.chapters.length
+                        const unlocked = group.chapters.length
+                        const pct = totalChapters > 0 ? Math.round((unlocked / totalChapters) * 100) : 100
+                        const complete = unlocked >= totalChapters
+                        return (
+                          <motion.div
+                            key={group.courseId}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: gi * 0.07 }}
+                            style={{ borderTop: "1px solid rgba(13,11,8,0.08)", paddingTop: 28, marginBottom: 8 }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 12 }}>
+                              <Link href={`/course/${group.courseId}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
+                                <h3 style={{ fontSize: 15, fontWeight: 600, color: "#0D0B08", margin: 0, lineHeight: 1.3 }}>
+                                  {group.courseTitle}
+                                </h3>
                               </Link>
-                            ))}
-                          </div>
-                        </motion.div>
-                      ))}
+                              <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                                {complete ? (
+                                  <span style={{ fontSize: 9, fontWeight: 600, color: "#2D7C4A", background: "rgba(45,124,74,0.1)", padding: "3px 8px", textTransform: "uppercase", letterSpacing: "0.14em", borderRadius: 2 }}>
+                                    Complete ✓
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: 10, color: "#C4622D", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 500 }}>
+                                    {unlocked}/{totalChapters} chapters
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {/* Progress bar */}
+                            <div style={{ height: 3, background: "rgba(13,11,8,0.06)", borderRadius: 2, overflow: "hidden", marginBottom: 14 }}>
+                              <div style={{ height: "100%", width: `${pct}%`, background: complete ? "#2D7C4A" : "#C4622D", borderRadius: 2, transition: "width 0.6s ease" }} />
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                              {group.chapters.map(ch => (
+                                <Link key={ch.chapterId} href={`/course/${ch.courseId}`} style={{ textDecoration: "none" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "rgba(13,11,8,0.02)", gap: 16 }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <span style={{ ...labelStyle, marginRight: 10 }}>Ch {ch.chapterId + 1}</span>
+                                      <span style={{ fontSize: 13, color: "#0D0B08", fontWeight: 400 }}>{ch.chapterTitle}</span>
+                                    </div>
+                                    <div style={{ fontSize: 12, color: "rgba(13,11,8,0.3)", flexShrink: 0 }}>
+                                      ${formatPrice(ch.price)}
+                                    </div>
+                                  </div>
+                                </Link>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )
+                      })}
                       <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)", marginTop: 8 }} />
                     </div>
                   )

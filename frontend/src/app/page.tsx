@@ -507,24 +507,42 @@ export default function Home() {
           ) : courses.length === 0 ? (
             <FadeUp>
               <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "96px 0", textAlign: "center" }}>
-                <p style={{ color: "rgba(13,11,8,0.25)", fontSize: 16, marginBottom: 12, fontWeight: 300 }}>No courses yet</p>
-                <p style={{ color: "rgba(13,11,8,0.15)", fontSize: 13, marginBottom: 40 }}>Be the first educator on EduPay</p>
-                <Link
-                  href="/create"
-                  style={{ fontSize: 11, color: "#C4622D", borderBottom: "1px solid rgba(196,98,45,0.3)", paddingBottom: 2, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.18em" }}
-                >
-                  Create a course
-                </Link>
+                <div style={{ fontSize: 48, marginBottom: 24, opacity: 0.15 }}>📚</div>
+                <p style={{ color: "rgba(13,11,8,0.55)", fontSize: 20, marginBottom: 10, fontWeight: 500, letterSpacing: "-0.01em" }}>
+                  EduPay is just getting started.
+                </p>
+                <p style={{ color: "rgba(13,11,8,0.28)", fontSize: 14, marginBottom: 48, lineHeight: 1.7, maxWidth: 360, margin: "0 auto 48px" }}>
+                  Be the first educator to publish a course. Students pay per chapter — you get paid instantly, no middlemen.
+                </p>
+                <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+                  <Link
+                    href="/create"
+                    style={{ fontSize: 11, background: "#0D0B08", color: "#F2ECE2", padding: "14px 32px", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 500, textDecoration: "none" }}
+                  >
+                    Publish a course
+                  </Link>
+                  <Link
+                    href="/guide"
+                    style={{ fontSize: 11, color: "rgba(13,11,8,0.45)", border: "1px solid rgba(13,11,8,0.15)", padding: "14px 32px", textTransform: "uppercase", letterSpacing: "0.18em", textDecoration: "none" }}
+                  >
+                    How it works
+                  </Link>
+                </div>
               </div>
             </FadeUp>
           ) : filteredCourses.length === 0 ? (
             <div style={{ borderTop: "1px solid rgba(13,11,8,0.08)", padding: "64px 0", textAlign: "center" }}>
-              <p style={{ color: "rgba(13,11,8,0.25)", fontSize: 15, marginBottom: 12, fontWeight: 300 }}>No courses match "{search}"</p>
+              <p style={{ color: "rgba(13,11,8,0.35)", fontSize: 15, marginBottom: 8, fontWeight: 300 }}>
+                {search ? `No courses match "${search}"` : `No ${activeCategory} courses yet`}
+              </p>
+              <p style={{ color: "rgba(13,11,8,0.18)", fontSize: 13, marginBottom: 28 }}>
+                {search ? "Try a different keyword or clear your search" : "Try a different category or browse all courses"}
+              </p>
               <button
-                onClick={() => setSearch("")}
+                onClick={() => { setSearch(""); setActiveCategory("All") }}
                 style={{ fontSize: 11, color: "#C4622D", background: "none", border: "none", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.18em", fontFamily: "inherit", borderBottom: "1px solid rgba(196,98,45,0.3)", paddingBottom: 2 }}
               >
-                Clear search
+                Show all courses
               </button>
             </div>
           ) : (

@@ -178,9 +178,9 @@ export default function Dashboard() {
               style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderTop: "1px solid rgba(13,11,8,0.08)", marginBottom: 64 }}
             >
               {[
-                { label: "Courses created", value: tutorCourses.length },
-                { label: "Total earned", value: `${Number(totalEarned).toFixed(2)} cUSD` },
-                { label: "Lessons purchased", value: purchasedChapters.length },
+                { label: "Courses created", value: tutorCourses.length, link: undefined },
+                { label: "Total earned", value: `$${Number(totalEarned).toFixed(2)}`, link: "/earnings" },
+                { label: "Lessons purchased", value: purchasedChapters.length, link: undefined },
               ].map((stat, i) => (
                 <div
                   key={i}
@@ -191,10 +191,21 @@ export default function Dashboard() {
                     borderLeft: i > 0 ? "1px solid rgba(13,11,8,0.08)" : "none",
                   }}
                 >
-                  <div style={{ fontSize: 32, fontWeight: 600, color: i === 1 ? "#C4622D" : "#0D0B08", letterSpacing: "-0.02em", marginBottom: 8 }}>
-                    {fetching ? "—" : stat.value}
-                  </div>
-                  <div style={{ ...labelStyle }}>{stat.label}</div>
+                  {stat.link ? (
+                    <Link href={stat.link} style={{ textDecoration: "none" }}>
+                      <div style={{ fontSize: 32, fontWeight: 600, color: "#C4622D", letterSpacing: "-0.02em", marginBottom: 8 }}>
+                        {fetching ? "—" : stat.value}
+                      </div>
+                      <div style={{ ...labelStyle }}>{stat.label} ↗</div>
+                    </Link>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 32, fontWeight: 600, color: "#0D0B08", letterSpacing: "-0.02em", marginBottom: 8 }}>
+                        {fetching ? "—" : stat.value}
+                      </div>
+                      <div style={{ ...labelStyle }}>{stat.label}</div>
+                    </>
+                  )}
                 </div>
               ))}
             </motion.div>

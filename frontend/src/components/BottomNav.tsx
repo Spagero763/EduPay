@@ -15,12 +15,13 @@ const tabs = [
     ),
   },
   {
-    href: "/#courses",
-    label: "Courses",
+    href: "/stats",
+    label: "Stats",
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#C4622D" : "rgba(13,11,8,0.35)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
-        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+        <line x1="18" y1="20" x2="18" y2="10"/>
+        <line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="14"/>
       </svg>
     ),
   },
@@ -68,7 +69,7 @@ export function BottomNav() {
       }}
     >
       {tabs.map(({ href, label, icon }) => {
-        const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href.replace("/#courses", ""))
+        const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href)
         return (
           <Link
             key={href}

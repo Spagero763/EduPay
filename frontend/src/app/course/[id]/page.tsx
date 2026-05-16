@@ -15,6 +15,13 @@ type Chapter = {
   hasAccess: boolean
 }
 
+type Receipt = {
+  type: "chapter" | "full"
+  chapterTitle?: string
+  amount: string
+  chapterId?: number
+}
+
 type Course = {
   tutor: string
   title: string
@@ -141,6 +148,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [addingChapter, setAddingChapter] = useState(false)
   const [toggling, setToggling] = useState(false)
   const [error, setError] = useState("")
+  const [receipt, setReceipt] = useState<Receipt | null>(null)
 
   const loadData = useCallback(async () => {
     if (!isValidCourseId) {
@@ -232,6 +240,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     try {
       await purchaseChapter(courseId, chapter.id, chapter.priceUSD6)
       await loadData()
+      setReceipt({ type: "chapter", chapterTitle: chapter.title, amount: formatPrice(chapter.priceUSD6), chapterId: chapter.id })
       toast("Chapter unlocked! Start reading now.", "success")
     } catch (err: any) {
       const msg = parseError(err)
@@ -263,6 +272,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     try {
       await purchaseFullCourse(courseId, remainingTotal6)
       await loadData()
+      setReceipt({ type: "full", amount: Number(ethers.utils.formatUnits(remainingTotal6, 6)).toFixed(2) })
       toast("Full course unlocked! Happy learning.", "success")
     } catch (err: any) {
       const msg = parseError(err)
@@ -500,6 +510,57 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
 
         {error && <p className="error">{error}</p>}
       </div>
+
+      {/* Purchase receipt modal */}
+      {receipt && (
+        <div className="receipt-overlay" onClick={() => setReceipt(null)}>
+          <div className="receipt-modal" onClick={e => e.stopPropagation()}>
+            <div className="receipt-check">✓</div>
+            <div className="receipt-eyebrow">
+              {receipt.type === "full" ? "Full course unlocked" : "Chapter unlocked"}
+            </div>
+            <h2 className="receipt-title">
+              {receipt.type === "full" ? course?.title : receipt.chapterTitle}
+            </h2>
+            <div className="receipt-amount">${receipt.amount} <span className="receipt-token">{receipt.type === "full" ? "paid" : "paid"}</span></div>
+            <div className="receipt-actions">
+              {receipt.type === "chapter" && receipt.chapterId !== undefined && (
+                <button
+                  className="primary-btn"
+                  style={{ width: "auto", padding: "12px 28px" }}
+                  onClick={() => {
+                    const ch = chapters.find(c => c.id === receipt.chapterId)
+                    if (ch) handleReadChapter(ch)
+                    setReceipt(null)
+                  }}
+                >
+                  Start reading →
+                </button>
+              )}
+              {receipt.type === "full" && (
+                <button
+                  className="primary-btn"
+                  style={{ width: "auto", padding: "12px 28px" }}
+                  onClick={() => {
+                    const first = chapters.find(c => c.hasAccess)
+                    if (first) handleReadChapter(first)
+                    setReceipt(null)
+                  }}
+                >
+                  Start reading →
+                </button>
+              )}
+              <button
+                className="ghost-btn"
+                style={{ width: "auto", padding: "12px 20px" }}
+                onClick={() => setReceipt(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .page {
@@ -805,6 +866,77 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
           margin-top: 14px;
           color: #c04f20;
           font-size: 14px;
+        }
+
+        .receipt-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(13, 11, 8, 0.55);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 24px;
+        }
+
+        .receipt-modal {
+          background: #fffaf4;
+          border: 1px solid rgba(32, 26, 20, 0.1);
+          padding: 48px 40px;
+          max-width: 420px;
+          width: 100%;
+          text-align: center;
+        }
+
+        .receipt-check {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: #C4622D;
+          color: #fffaf4;
+          font-size: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 24px;
+        }
+
+        .receipt-eyebrow {
+          font-size: 10px;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          color: rgba(32, 26, 20, 0.4);
+          margin-bottom: 12px;
+        }
+
+        .receipt-title {
+          font-size: 22px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          line-height: 1.2;
+          margin: 0 0 20px;
+          color: #201a14;
+        }
+
+        .receipt-amount {
+          font-size: 32px;
+          font-weight: 700;
+          color: #C4622D;
+          letter-spacing: -0.02em;
+          margin-bottom: 32px;
+        }
+
+        .receipt-token {
+          font-size: 13px;
+          color: rgba(196, 98, 45, 0.5);
+          font-weight: 400;
+        }
+
+        .receipt-actions {
+          display: flex;
+          gap: 10px;
+          justify-content: center;
+          flex-wrap: wrap;
         }
 
         @media (max-width: 980px) {

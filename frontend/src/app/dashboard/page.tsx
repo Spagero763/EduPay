@@ -86,8 +86,8 @@ export default function Dashboard() {
           )
           const unlockedIds = accessResults.map((has, chid) => ({ has, chid })).filter(x => x.has)
           if (unlockedIds.length === 0) return null
-          const chapters = await Promise.all(
-            unlockedIds.map(({ chid }) => eduPay.getChapter(cid, chid).then(ch => ({
+          const chapters: PurchasedChapter[] = await Promise.all(
+            unlockedIds.map(({ chid }) => eduPay.getChapter(cid, chid).then((ch: { title: string; priceUSD: { toString(): string } }) => ({
               courseId: cid,
               courseTitle: c.title,
               chapterId: chid,

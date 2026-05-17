@@ -213,7 +213,7 @@ const sections = [
   },
   {
     id: "images",
-    label: "Upload to IPFS",
+    label: "Adding images",
     title: "Adding Images to Lessons",
     content: (
       <div>

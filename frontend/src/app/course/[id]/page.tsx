@@ -30,6 +30,21 @@ type Course = {
   chapterCount: number
 }
 
+// Only allow safe http(s) URLs. Blocks javascript:, data:, vbscript:, etc.
+// which would otherwise execute as XSS when rendered in href/src.
+function safeUrl(raw: unknown): string | null {
+  if (typeof raw !== "string") return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  try {
+    const url = new URL(trimmed, window.location.origin)
+    if (url.protocol === "http:" || url.protocol === "https:") return url.href
+    return null
+  } catch {
+    return null
+  }
+}
+
 function renderContent(hash: string): React.ReactNode {
   if (!hash) return null
 
@@ -62,10 +77,12 @@ function renderContent(hash: string): React.ReactNode {
             }
 
             if (block.type === "imageUrl" && block.content) {
+              const imgSrc = safeUrl(block.content)
+              if (!imgSrc) return null
               return (
                 <figure key={i} className="reader-figure">
                   <img
-                    src={block.content}
+                    src={imgSrc}
                     alt="Lesson image"
                     className="reader-image"
                     onError={(e) => {
@@ -93,12 +110,21 @@ function renderContent(hash: string): React.ReactNode {
             }
 
             if (block.type === "url" && block.content) {
+              const linkHref = safeUrl(block.content)
+              if (!linkHref) {
+                // Unsafe protocol — render as plain text, never as a clickable link
+                return (
+                  <p key={i} className="reader-paragraph">
+                    {block.content}
+                  </p>
+                )
+              }
               return (
                 <p key={i} className="reader-paragraph">
                   <a
-                    href={block.content}
+                    href={linkHref}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noreferrer noopener"
                     className="reader-link"
                   >
                     {block.content}

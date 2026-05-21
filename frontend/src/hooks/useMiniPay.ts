@@ -196,7 +196,11 @@ export function useMiniPay() {
     )
 
     if (allowance.lt(requiredAmount)) {
-      const tx = await tokenContract.approve(EDUPAY_ADDRESS, ethers.constants.MaxUint256)
+      // Approve only the exact amount needed for this purchase — not MaxUint256.
+      // A tutor can change a chapter price (updateChapter); an unlimited approval
+      // would let a malicious price hike drain the student's balance. An exact
+      // approval makes any post-approval price increase revert harmlessly.
+      const tx = await tokenContract.approve(EDUPAY_ADDRESS, requiredAmount)
       await tx.wait()
     }
 
